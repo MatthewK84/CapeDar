@@ -30,7 +30,7 @@ testpaths = ["tests"]
 addopts = "-q --strict-markers"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 strict = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
@@ -44,6 +44,10 @@ files = ["src", "tests"]
 [[tool.mypy.overrides]]
 module = ["pyqtgraph.*", "serial.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["numpy", "numpy.*"]
+follow_imports = "skip"
 
 [tool.ruff]
 target-version = "py310"
