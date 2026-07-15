@@ -12,9 +12,28 @@ Runs against real hardware or a built-in simulator, so you can evaluate the GUI 
 ## Quickstart
 
 ```bash
-git clone <your-repo-url> && cd aop-presence
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+git clone https://github.com/MatthewK84/CapeDar.git
+cd CapeDar
+python -m venv .venv
+```
+
+Activate the environment on Linux or macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Or activate it from Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Then install the package and its development tools from the repository root, where
+`pyproject.toml` is located:
+
+```bash
+python -m pip install -e ".[dev]"
 ```
 
 Try it with no hardware attached:
@@ -115,7 +134,7 @@ UART bytes -> FrameAssembler -> RadarFrame -> DetectionPipeline -> DetectionRepo
 |--------|---------------|
 | `protocol.py` | Wire constants and the exception hierarchy |
 | `parser.py` | Magic-word sync, header and TLV decode, resync after corruption |
-| `types.py` | Every frozen dataclass crossing a module boundary |
+| `custom_types.py` | Every frozen dataclass crossing a module boundary |
 | `config.py` | `DetectionConfig`, validated at construction |
 | `filters.py` | Per-point SNR, range, and FOV gates |
 | `clustering.py` | Iterative DBSCAN with an explicit queue, no recursion |

@@ -8,7 +8,7 @@ dropouts that occur when a person holds still.
 
 from __future__ import annotations
 
-from .types import PresenceState
+from .custom_types import PresenceState
 
 
 class PresenceTracker:

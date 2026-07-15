@@ -24,7 +24,7 @@ from .protocol import (
     FramingError,
     PayloadError,
 )
-from .types import DetectedPoint, FrameHeader, RadarFrame
+from .custom_types import DetectedPoint, FrameHeader, RadarFrame
 
 logger: logging.Logger = logging.getLogger(__name__)
 

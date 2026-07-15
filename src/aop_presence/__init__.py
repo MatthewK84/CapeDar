@@ -15,7 +15,7 @@ from .presence import PresenceTracker
 from .protocol import ConfigError, ProtocolError, SensorError
 from .sensor import FrameSource, RadarSensor, find_evm_ports
 from .simulator import SimulatedSensor, encode_packet, make_frame
-from .types import (
+from .custom_types import (
     DetectedPoint,
     DetectionReport,
     FrameHeader,

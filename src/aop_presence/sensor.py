@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from types import TracebackType
 
-    from .types import RadarFrame
+    from .custom_types import RadarFrame
 
 logger: logging.Logger = logging.getLogger(__name__)
 

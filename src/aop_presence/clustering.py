@@ -13,7 +13,7 @@ from collections import deque
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
-    from .types import DetectedPoint
+    from .custom_types import DetectedPoint
 
 UNVISITED: Final[int] = -1
 NOISE: Final[int] = -2

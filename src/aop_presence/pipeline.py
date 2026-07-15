@@ -9,7 +9,7 @@ from .config import DetectionConfig
 from .filters import gate_points
 from .presence import PresenceTracker
 from .sizing import estimate_size
-from .types import DetectedPoint, DetectionReport, PresenceState, RadarFrame, TargetCluster
+from .custom_types import DetectedPoint, DetectionReport, PresenceState, RadarFrame, TargetCluster
 
 
 def build_cluster(points: tuple[DetectedPoint, ...], config: DetectionConfig) -> TargetCluster:
