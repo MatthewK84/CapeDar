@@ -5,25 +5,43 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aop-presence"
 version = "0.1.0"
-description = "Presence detection, ranging, and sizing GUI for the TI AWR6843AOPEVM mmWave radar"
+description = "Presence detection, ranging, and sizing for the TI AWR6843AOPEVM mmWave radar"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
     "pyserial>=3.5",
+]
+
+[project.optional-dependencies]
+pi = [
+    "gpiozero>=2.0",
+    "lgpio>=0.2.2.0",
+]
+gui = [
     "PyQt6>=6.5",
     "pyqtgraph>=0.13",
     "numpy>=1.24",
 ]
-
-[project.optional-dependencies]
-dev = ["pytest>=7.4", "pytest-cov>=4.1", "ruff>=0.4", "mypy>=1.8"]
+dev = [
+    "PyQt6>=6.5",
+    "pyqtgraph>=0.13",
+    "numpy>=1.24",
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "mypy>=1.8",
+]
 
 [project.scripts]
+capedar = "aop_presence.cli:main"
 aop-presence = "aop_presence.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+aop_presence = ["data/*.cfg", "py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -42,7 +60,7 @@ disallow_subclassing_any = true
 files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
-module = ["pyqtgraph.*", "serial.*"]
+module = ["pyqtgraph.*", "serial.*", "gpiozero.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

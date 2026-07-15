@@ -14,6 +14,12 @@ if TYPE_CHECKING:
 DEFAULT_AZIMUTH_RES_DEG: Final[float] = 15.0
 DEFAULT_ELEVATION_RES_DEG: Final[float] = 30.0
 
+# Two clusters closer together than this are treated as fragments of one
+# object. Set near the azimuth cell width at typical working range: a 15 deg
+# beam is roughly 0.8 m wide at 3 m, so anything tighter is not resolvable
+# anyway and splitting it would be inventing a second object.
+DEFAULT_MIN_SEPARATION_M: Final[float] = 0.75
+
 
 class ConfigValidationError(ValueError):
     """Raised when detection parameters are self-inconsistent."""
@@ -37,6 +43,9 @@ class DetectionConfig:
     cluster_min_points: int = 3
     frames_to_confirm: int = 3
     frames_to_clear: int = 6
+    min_target_separation_m: float = DEFAULT_MIN_SEPARATION_M
+    multi_frames_to_confirm: int = 5
+    multi_frames_to_clear: int = 10
     azimuth_resolution_deg: float = DEFAULT_AZIMUTH_RES_DEG
     elevation_resolution_deg: float = DEFAULT_ELEVATION_RES_DEG
     range_resolution_m: float = 0.044
@@ -56,6 +65,13 @@ class DetectionConfig:
             raise ConfigValidationError("max_elevation_deg must be in (0, 90]")
         if self.cluster_eps_m <= 0.0:
             raise ConfigValidationError("cluster_eps_m must be > 0")
+        if self.min_target_separation_m <= 0.0:
+            raise ConfigValidationError("min_target_separation_m must be > 0")
+        if self.min_target_separation_m < self.cluster_eps_m:
+            raise ConfigValidationError(
+                "min_target_separation_m must be >= cluster_eps_m; a separation "
+                "below the clustering radius cannot split anything DBSCAN merged"
+            )
 
     def _validate_counts(self) -> None:
         if self.cluster_min_points < 1:
@@ -64,6 +80,10 @@ class DetectionConfig:
             raise ConfigValidationError("frames_to_confirm must be >= 1")
         if self.frames_to_clear < 1:
             raise ConfigValidationError("frames_to_clear must be >= 1")
+        if self.multi_frames_to_confirm < 1:
+            raise ConfigValidationError("multi_frames_to_confirm must be >= 1")
+        if self.multi_frames_to_clear < 1:
+            raise ConfigValidationError("multi_frames_to_clear must be >= 1")
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

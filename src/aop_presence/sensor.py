@@ -14,7 +14,8 @@ import serial
 from serial.tools import list_ports
 
 from .parser import FrameAssembler
-from .protocol import CLI_BAUD, DATA_BAUD, ConfigError, SensorError
+from .protocol import CLI_BAUD, DATA_BAUD, MAGIC_WORD, ConfigError, SensorError
+from .resources import default_radar_commands, parse_config_text
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -32,6 +33,7 @@ CLI_RESPONSE_TIMEOUT_S: Final[float] = 1.0
 READ_CHUNK_BYTES: Final[int] = 4096
 DATA_READ_TIMEOUT_S: Final[float] = 0.5
 EVM_VID_CP2105: Final[int] = 0x10C4
+STREAM_PROBE_TIMEOUT_S: Final[float] = 1.5
 
 
 @runtime_checkable
@@ -71,8 +73,7 @@ def read_config_lines(path: Path) -> list[str]:
         text: str = path.read_text(encoding="utf-8")
     except OSError as exc:
         raise ConfigError(f"Cannot read radar config {path}: {exc}") from exc
-    lines: list[str] = [line.strip() for line in text.splitlines()]
-    return [line for line in lines if line and not line.startswith("%")]
+    return parse_config_text(text)
 
 
 class RadarSensor:
@@ -150,14 +151,47 @@ class RadarSensor:
         return reply.decode("ascii", "replace")
 
     def configure(self, config_path: Path) -> None:
-        """Push a .cfg profile line by line. sensorStop first, so re-config works."""
+        """Push a .cfg profile from disk."""
         commands: list[str] = read_config_lines(config_path)
         if not commands:
             raise ConfigError(f"Radar config {config_path} contains no commands")
+        self.apply_commands(commands)
+        logger.info("Applied %d config commands from %s", len(commands), config_path)
+
+    def configure_default(self) -> None:
+        """Push the profile bundled inside the package. Needs no files on disk."""
+        commands: list[str] = default_radar_commands()
+        self.apply_commands(commands)
+        logger.info("Applied %d config commands from the bundled profile", len(commands))
+
+    def apply_commands(self, commands: list[str]) -> None:
+        """Push CLI commands line by line. sensorStop first, so re-config works."""
+        if not commands:
+            raise ConfigError("No radar config commands to apply")
         self._send_stop_quietly()
         for command in commands:
             self.send_command(command)
-        logger.info("Applied %d config commands from %s", len(commands), config_path)
+
+    def is_streaming(self, timeout_s: float = STREAM_PROBE_TIMEOUT_S) -> bool:
+        """Listen for a magic word to see whether the sensor is already running.
+
+        Lets the tool attach to a sensor someone else configured, or one left
+        running by a previous run, instead of insisting on a fresh profile push.
+        """
+        if self._data is None:
+            raise SensorError("Data port is not open")
+        deadline: float = time.monotonic() + timeout_s
+        tail: bytes = b""
+        while time.monotonic() < deadline:
+            chunk: bytes = self._read_chunk(self._data)
+            if not chunk:
+                continue
+            buffered: bytes = tail + chunk
+            if MAGIC_WORD in buffered:
+                return True
+            # Keep enough tail that a magic word split across reads still matches.
+            tail = buffered[-(len(MAGIC_WORD) - 1) :]
+        return False
 
     def _send_stop_quietly(self) -> None:
         """A sensorStop on an already-stopped sensor errors; that is expected."""

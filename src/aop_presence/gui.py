@@ -19,9 +19,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from .custom_types import DetectionReport, PresenceState, TargetCluster
 from .pipeline import DetectionPipeline
 from .plotview import RadarPlot
-from .custom_types import DetectionReport, PresenceState, TargetCluster
 from .worker import AcquisitionWorker
 
 if TYPE_CHECKING:

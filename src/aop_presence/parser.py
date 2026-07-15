@@ -6,6 +6,7 @@ import logging
 import struct
 import time
 
+from .custom_types import DetectedPoint, FrameHeader, RadarFrame
 from .protocol import (
     HEADER_LEN,
     HEADER_STRUCT,
@@ -24,7 +25,6 @@ from .protocol import (
     FramingError,
     PayloadError,
 )
-from .custom_types import DetectedPoint, FrameHeader, RadarFrame
 
 logger: logging.Logger = logging.getLogger(__name__)
 

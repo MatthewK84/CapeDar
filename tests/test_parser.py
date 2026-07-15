@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from aop_presence.custom_types import DetectedPoint
 from aop_presence.parser import (
     FrameAssembler,
     attach_side_info,
@@ -20,7 +21,6 @@ from aop_presence.protocol import (
     PayloadError,
 )
 from aop_presence.simulator import encode_packet
-from aop_presence.custom_types import DetectedPoint
 
 
 def make_points() -> tuple[DetectedPoint, ...]:

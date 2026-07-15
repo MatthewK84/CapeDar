@@ -1,10 +1,10 @@
 # aop-presence
 
-**BLUF:** A Python package and GUI that turns a TI AWR6843AOPEVM into an object detector. It reports whether something is in front of the sensor, how far away it is, and how big it is. It stays silent when the space is empty.
+**BLUF:** A Python package, GUI, and SSH-friendly headless monitor that turns a TI AWR6843AOPEVM into an object detector. It reports whether something is in front of the sensor, how far away it is, and how big it is. It raises a Raspberry Pi GPIO line when more than one object is present. It stays silent when the space is empty.
 
-Runs against real hardware or a built-in simulator, so you can evaluate the GUI before the EVM arrives.
+Runs against real hardware or a built-in simulator, so you can evaluate everything before the EVM arrives. `capedar` takes no required arguments.
 
-![status](https://img.shields.io/badge/tests-57%20passing-brightgreen)
+![status](https://img.shields.io/badge/tests-103%20passing-brightgreen)
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
 
 ---
@@ -29,30 +29,51 @@ Or activate it from Windows PowerShell:
 .venv\Scripts\Activate.ps1
 ```
 
-Then install the package and its development tools from the repository root, where
-`pyproject.toml` is located:
+For the desktop GUI and development tools, install from the repository root:
 
 ```bash
 python -m pip install -e ".[dev]"
 ```
 
-Try it with no hardware attached:
+For a headless Raspberry Pi, install only the lightweight core package:
 
 ```bash
-aop-presence --simulate
+python -m pip install -e .
 ```
 
-Run it against the EVM:
+Try it with no hardware attached. The `pair` scene walks a second object into the
+room so you can watch the multi-object signal fire:
 
 ```bash
-aop-presence --radar-cfg configs/aop_presence_10fps.cfg
+capedar --simulate --scenario pair
+```
+
+Run it against the EVM. Nothing else is required:
+
+```bash
+capedar
+```
+
+That autodetects the ports, attaches to the sensor if it is already streaming,
+pushes the bundled profile if it is not, opens the GPIO line if the machine has
+one, and prints to stdout. Every flag narrows that default; none of them enables it.
+
+Headless is the default. It prints `DETECTED` / `CLEARED` for presence,
+`MULTI` / `MULTI-CLEARED` for the signal line, and one `STATUS` heartbeat per
+second. Stop it cleanly with `Ctrl+C`. Add `--gui` for the Qt window.
+
+Emit one JSON record per frame instead, for piping into something else. Logs go
+to stderr, so stdout stays clean:
+
+```bash
+capedar --json | jq -r 'select(.multi_target) | .frame'
 ```
 
 Ports autodetect via the CP2105 bridge. Override them when autodetect guesses wrong:
 
 ```bash
-aop-presence --cli-port /dev/ttyUSB0 --data-port /dev/ttyUSB1     # Linux
-aop-presence --cli-port COM4 --data-port COM5                     # Windows
+capedar --cli-port /dev/ttyUSB0 --data-port /dev/ttyUSB1     # Linux
+capedar --cli-port COM4 --data-port COM5                     # Windows PowerShell
 ```
 
 On Linux, add yourself to the `dialout` group first, then log out and back in:
@@ -60,6 +81,93 @@ On Linux, add yourself to the `dialout` group first, then log out and back in:
 ```bash
 sudo usermod -aG dialout $USER
 ```
+
+## Multi-object signal line
+
+The line goes HIGH while more than one resolvably distinct object is confirmed
+in front of the sensor, and LOW otherwise.
+
+### Wiring, Raspberry Pi 5
+
+Physical (BOARD) pin numbers, counted on the 40-pin header:
+
+| Pi 5 pin | Function | Connect to |
+|----------|----------|------------|
+| 1  | 3V3 power | Module VCC |
+| 9  | Ground    | Module GND |
+| 11 | GPIO17    | Module signal input |
+
+Install the GPIO backend on the Pi:
+
+```bash
+python -m pip install -e ".[pi]"
+```
+
+Then run it. `--gpio on` refuses to start if the pin cannot be opened, which is
+what you want in the field; a silently dead signal line is worse than a refusal:
+
+```bash
+capedar --gpio on
+```
+
+### Pi 5 specifics that will bite you
+
+- **RPi.GPIO does not work on the Pi 5.** The Pi 5 moved its GPIO behind the RP1 southbridge. pigpio does not support it either, so network remote-GPIO is off the table. This package uses gpiozero backed by lgpio, which is the supported Pi 5 path. gpiozero also resolves the gpiochip number itself, which matters because that number moved between Pi OS releases.
+- **GPIO17 sources 16 mA.** Drive an opto-isolated or transistor module. Do not hang a relay coil or a bare LED off the pin.
+- **3V3 logic.** Most 5V relay boards will not reliably switch on a 3.3V input. Check your module's datasheet before blaming the radar.
+- **Invert if needed.** Modules that trigger on a low input want `--gpio-active-low`.
+
+### Fail-safe behaviour
+
+The line is driven LOW on startup, on shutdown, on `Ctrl+C`, on `SIGTERM`, on
+any error, and when the radar stops sending frames for `--stale-timeout`
+seconds (default 2.0). A line still asserted after the sensor died would be a
+lie about the world, so every exit path de-asserts.
+
+### Why counting clusters is not counting people
+
+Cluster count is not object count, and code that pretends otherwise chatters.
+Two failure modes dominate:
+
+- **Fragmentation.** One person returns detections from torso, arms, and head. Density gaps split those into two or three clusters. Naive counting reports a crowd where one person stands. This package folds clusters closer together than `--min-separation` (default 0.75 m) into their strongest member, measuring separation in the ground plane so head and feet returns collapse correctly.
+- **Merging.** Two people inside one azimuth cell return one cluster. This is a physical limit of a 4Rx/3Tx array and no post-processing recovers it.
+
+The azimuth beam is roughly 15 degrees wide, so the closest two objects you can
+resolve grows with range:
+
+| Range | Minimum resolvable separation |
+|-------|-------------------------------|
+| 2 m   | ~0.5 m |
+| 4 m   | ~1.0 m |
+| 6 m   | ~1.6 m |
+| 8 m   | ~2.1 m |
+
+Past about 6 m, treat the multi-object signal as advisory. If one person reads
+as two, raise `--min-separation`. If two close people read as one, they are
+inside the same beam and the fix is to move the sensor, not the software.
+
+Occupancy runs its own hysteresis, slower than presence (5 frames to confirm,
+10 to clear, against 3 and 6), because counts are noisier than mere presence.
+
+## Running as a service
+
+```ini
+[Unit]
+Description=CapeDar multi-object signal
+After=multi-user.target
+
+[Service]
+ExecStart=/opt/capedar/.venv/bin/capedar --gpio on
+Restart=on-failure
+User=capedar
+SupplementaryGroups=dialout gpio
+
+[Install]
+WantedBy=multi-user.target
+```
+
+No `WorkingDirectory` is needed. The radar profile ships inside the package, so
+nothing depends on where the process starts.
 
 ## Hardware prerequisites
 
@@ -77,6 +185,7 @@ Your requirement was that the sensor stays quiet when nothing is there. A CFAR d
 | 2. Per-point gating | `filters.py` | Weak returns, points behind the antenna, points outside the forward wedge |
 | 3. Density clustering | `clustering.py` | Isolated points with no neighbours, which is what noise looks like |
 | 4. Temporal hysteresis | `presence.py` | One-frame flashes, and one-frame dropouts when a person holds still |
+| 5. Separation gate | `multitarget.py` | Fragments of one body counted as a second object |
 
 A target must clear all four to be reported. The GUI shows `NO OBJECT` until then, and `report.targets` is empty.
 
@@ -126,7 +235,7 @@ This is a physics limit of the array, not a software defect.
 ## Architecture
 
 ```
-UART bytes -> FrameAssembler -> RadarFrame -> DetectionPipeline -> DetectionReport -> GUI
+UART bytes -> FrameAssembler -> RadarFrame -> DetectionPipeline -> DetectionReport -> GUI/headless
               (parser.py)                     (gate/cluster/size/hysteresis)
 ```
 
@@ -145,6 +254,7 @@ UART bytes -> FrameAssembler -> RadarFrame -> DetectionPipeline -> DetectionRepo
 | `simulator.py` | Byte-exact packet encoder and synthetic target source |
 | `worker.py` | `QThread` that keeps serial reads off the event loop |
 | `gui.py`, `plotview.py` | Qt window and the bird's-eye plot |
+| `headless.py` | SSH-friendly detection events and status heartbeat |
 
 The library has no Qt dependency below `worker.py`. Import `DetectionPipeline` and use it headless in a service.
 
@@ -189,6 +299,9 @@ pytest
 CI runs all three on 3.10 through 3.12. The code targets the strict standards in this repo: full type hints, no recursion, functions under 30 lines, no bare excepts, no global mutable state.
 
 ## Known limitations
+
+- Two objects inside one azimuth beam return one cluster. At 6 m that is anything closer than ~1.6 m together. This is physics, not a bug, and no amount of software recovers it. Move the sensor closer or accept the limit.
+- The multi-object signal counts resolvably distinct scattering centres, not people. A person pushing a cart may read as two objects; two people hugging read as one.
 
 - No multi-frame tracker. Targets are clustered per frame and associated only by "nearest is primary". Two people crossing paths will swap identity. Add a Kalman or GTRACK stage if you need persistent IDs.
 - `clutterRemoval` is off, so a perfectly still target stays visible but static furniture also produces returns. Turn it on if you only care about motion.

@@ -6,12 +6,12 @@ import pytest
 
 from aop_presence.clustering import cluster_points
 from aop_presence.config import ConfigValidationError, DetectionConfig
+from aop_presence.custom_types import DetectedPoint, PresenceState
 from aop_presence.filters import gate_points, is_valid_point
 from aop_presence.pipeline import DetectionPipeline
 from aop_presence.presence import PresenceTracker
 from aop_presence.simulator import make_frame
 from aop_presence.sizing import cross_range_cell_m, estimate_size
-from aop_presence.custom_types import DetectedPoint, PresenceState
 
 CONFIG = DetectionConfig()
 

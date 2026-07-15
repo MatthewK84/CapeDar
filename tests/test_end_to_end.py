@@ -5,11 +5,11 @@ from __future__ import annotations
 from itertools import islice
 
 from aop_presence.config import DetectionConfig
+from aop_presence.custom_types import DetectionReport, PresenceState, RadarFrame
 from aop_presence.parser import FrameAssembler
 from aop_presence.pipeline import DetectionPipeline
 from aop_presence.sensor import FrameSource
 from aop_presence.simulator import SimulatedSensor, encode_packet
-from aop_presence.custom_types import DetectionReport, PresenceState, RadarFrame
 
 
 def collect(frame_count: int) -> list[DetectionReport]:
