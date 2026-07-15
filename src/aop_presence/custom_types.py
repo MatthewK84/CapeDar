@@ -14,10 +14,23 @@ DEFAULT_NOISE_DB: Final[float] = 0.0
 
 
 class PresenceState(str, Enum):
-    """Output of the hysteresis state machine."""
+    """Output of the presence hysteresis state machine."""
 
     ABSENT = "ABSENT"
     PRESENT = "PRESENT"
+
+
+class OccupancyState(str, Enum):
+    """How many distinct objects are confirmed in front of the sensor.
+
+    MULTIPLE is the condition that drives the GPIO signal line. It is a
+    separate state machine from PresenceState because cluster counts are far
+    less stable than mere presence and need their own, slower, hysteresis.
+    """
+
+    EMPTY = "EMPTY"
+    SINGLE = "SINGLE"
+    MULTIPLE = "MULTIPLE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,7 +127,12 @@ class TargetCluster:
 
 @dataclass(frozen=True, slots=True)
 class DetectionReport:
-    """Everything the GUI needs for one frame."""
+    """Everything a consumer needs for one frame.
+
+    ``targets`` holds every cluster that survived gating. ``distinct_targets``
+    holds the subset left after merging clusters that sit closer together than
+    the array can actually resolve, and is what ``occupancy`` counts.
+    """
 
     frame_number: int
     host_timestamp_s: float
@@ -122,6 +140,8 @@ class DetectionReport:
     targets: tuple[TargetCluster, ...] = field(default_factory=tuple)
     gated_points: tuple[DetectedPoint, ...] = field(default_factory=tuple)
     raw_point_count: int = 0
+    occupancy: OccupancyState = OccupancyState.EMPTY
+    distinct_targets: tuple[TargetCluster, ...] = field(default_factory=tuple)
 
     @property
     def primary(self) -> TargetCluster | None:
@@ -129,3 +149,13 @@ class DetectionReport:
         if not self.targets:
             return None
         return min(self.targets, key=lambda t: t.range_m)
+
+    @property
+    def distinct_count(self) -> int:
+        """Number of resolvably separate objects confirmed this frame."""
+        return len(self.distinct_targets)
+
+    @property
+    def multi_target(self) -> bool:
+        """True while more than one distinct object is confirmed. Drives the signal line."""
+        return self.occupancy is OccupancyState.MULTIPLE

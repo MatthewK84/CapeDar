@@ -14,9 +14,9 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from .protocol import ProtocolError, SensorError
 
 if TYPE_CHECKING:
+    from .custom_types import DetectionReport, RadarFrame
     from .pipeline import DetectionPipeline
     from .sensor import FrameSource
-    from .custom_types import DetectionReport, RadarFrame
 
 logger: logging.Logger = logging.getLogger(__name__)
 

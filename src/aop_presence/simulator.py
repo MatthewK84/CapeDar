@@ -12,6 +12,7 @@ import struct
 import time
 from typing import TYPE_CHECKING, Final
 
+from .custom_types import DetectedPoint, FrameHeader, RadarFrame
 from .protocol import (
     HEADER_LEN,
     MAGIC_WORD,
@@ -21,7 +22,6 @@ from .protocol import (
     TLV_DETECTED_POINTS,
     TLV_DETECTED_POINTS_SIDE_INFO,
 )
-from .custom_types import DetectedPoint, FrameHeader, RadarFrame
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -86,9 +86,20 @@ def make_frame(frame_number: int, points: tuple[DetectedPoint, ...]) -> RadarFra
     return RadarFrame(header=header, points=points, host_timestamp_s=time.monotonic())
 
 
-def _target_points(range_m: float, rng: random.Random, count: int = 9) -> list[DetectedPoint]:
-    """A small cloud of correlated returns, as a real body produces."""
-    azimuth_rad: float = math.radians(rng.uniform(-6.0, 6.0))
+def _target_points(
+    range_m: float,
+    rng: random.Random,
+    count: int = 9,
+    azimuth_deg: float | None = None,
+) -> list[DetectedPoint]:
+    """A small cloud of correlated returns, as a real body produces.
+
+    ``azimuth_deg`` pins the bearing; leaving it None wanders randomly. The
+    two-object scenario needs pinned bearings so the pair stays resolvably
+    apart instead of drifting into each other.
+    """
+    bearing_deg: float = rng.uniform(-6.0, 6.0) if azimuth_deg is None else azimuth_deg
+    azimuth_rad: float = math.radians(bearing_deg)
     points: list[DetectedPoint] = []
     for _ in range(count):
         jitter_r: float = rng.gauss(0.0, 0.06)
@@ -123,21 +134,44 @@ def _clutter_points(rng: random.Random, count: int) -> list[DetectedPoint]:
     ]
 
 
-class SimulatedSensor:
-    """FrameSource that walks a target from 6 m to 1 m, then out of the room.
+SCENARIO_SINGLE: Final[str] = "single"
+SCENARIO_PAIR: Final[str] = "pair"
+SCENARIOS: Final[tuple[str, ...]] = (SCENARIO_SINGLE, SCENARIO_PAIR)
 
-    Frames 0-19 are empty room, 20-119 a closing target, 120+ empty again.
+
+class SimulatedSensor:
+    """FrameSource producing a repeatable scripted scene with no hardware.
+
+    single
+        Empty room, then one target closing from 6 m to 1 m, then empty again.
+        Frames 0-19 empty, 20-119 closing, 120-159 empty.
+
+    pair
+        The same closing target, joined at frame 45 by a second object 1.6 m
+        to its left. Exercises the multi-object signal path end to end: the
+        line should go HIGH shortly after frame 45 and LOW again after 105.
     """
 
     def __init__(
-        self, frame_rate_hz: float = DEFAULT_FRAME_RATE_HZ, seed: int = 1234, realtime: bool = True
+        self,
+        frame_rate_hz: float = DEFAULT_FRAME_RATE_HZ,
+        seed: int = 1234,
+        realtime: bool = True,
+        scenario: str = SCENARIO_SINGLE,
     ) -> None:
         if frame_rate_hz <= 0.0:
             raise ValueError("frame_rate_hz must be > 0")
+        if scenario not in SCENARIOS:
+            raise ValueError(f"scenario must be one of {SCENARIOS}, got {scenario!r}")
         self._period_s: float = 1.0 / frame_rate_hz
         self._rng: random.Random = random.Random(seed)
         self._realtime: bool = realtime
+        self._scenario: str = scenario
         self._running: bool = False
+
+    @property
+    def scenario(self) -> str:
+        return self._scenario
 
     def stop(self) -> None:
         self._running = False
@@ -145,12 +179,19 @@ class SimulatedSensor:
     def close(self) -> None:
         self._running = False
 
+    def _second_object(self, phase: int) -> list[DetectedPoint]:
+        """A second body that walks in at frame 45 and leaves at 105."""
+        if self._scenario != SCENARIO_PAIR or not 45 <= phase < 105:
+            return []
+        return _target_points(3.2, self._rng, azimuth_deg=-24.0)
+
     def _points_for(self, frame_number: int) -> tuple[DetectedPoint, ...]:
         phase: int = frame_number % 160
         points: list[DetectedPoint] = _clutter_points(self._rng, self._rng.randint(0, 3))
         if 20 <= phase < 120:
             progress: float = (phase - 20) / 100.0
-            points.extend(_target_points(6.0 - 5.0 * progress, self._rng))
+            points.extend(_target_points(6.0 - 5.0 * progress, self._rng, azimuth_deg=4.0))
+        points.extend(self._second_object(phase))
         self._rng.shuffle(points)
         return tuple(points)
 

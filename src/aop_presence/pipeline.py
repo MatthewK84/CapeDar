@@ -6,10 +6,18 @@ import math
 
 from .clustering import cluster_points, mean_of
 from .config import DetectionConfig
+from .custom_types import (
+    DetectedPoint,
+    DetectionReport,
+    OccupancyState,
+    PresenceState,
+    RadarFrame,
+    TargetCluster,
+)
 from .filters import gate_points
+from .multitarget import OccupancyTracker, resolve_distinct
 from .presence import PresenceTracker
 from .sizing import estimate_size
-from .custom_types import DetectedPoint, DetectionReport, PresenceState, RadarFrame, TargetCluster
 
 
 def build_cluster(points: tuple[DetectedPoint, ...], config: DetectionConfig) -> TargetCluster:
@@ -55,6 +63,9 @@ class DetectionPipeline:
         self._tracker: PresenceTracker = PresenceTracker(
             self._config.frames_to_confirm, self._config.frames_to_clear
         )
+        self._occupancy: OccupancyTracker = OccupancyTracker(
+            self._config.multi_frames_to_confirm, self._config.multi_frames_to_clear
+        )
 
     @property
     def config(self) -> DetectionConfig:
@@ -62,13 +73,18 @@ class DetectionPipeline:
 
     def reset(self) -> None:
         self._tracker.reset()
+        self._occupancy.reset()
 
     def process(self, frame: RadarFrame) -> DetectionReport:
-        """Run one frame through gating, clustering, and hysteresis."""
+        """Run one frame through gating, clustering, hysteresis, and occupancy."""
         gated: tuple[DetectedPoint, ...] = gate_points(frame.points, self._config)
         targets: tuple[TargetCluster, ...] = find_targets(gated, self._config)
         state: PresenceState = self._tracker.update(len(targets) > 0)
         reported: tuple[TargetCluster, ...] = targets if state is PresenceState.PRESENT else ()
+        distinct: tuple[TargetCluster, ...] = resolve_distinct(
+            reported, self._config.min_target_separation_m
+        )
+        occupancy: OccupancyState = self._occupancy.update(len(distinct))
         return DetectionReport(
             frame_number=frame.header.frame_number,
             host_timestamp_s=frame.host_timestamp_s,
@@ -76,4 +92,6 @@ class DetectionPipeline:
             targets=reported,
             gated_points=gated,
             raw_point_count=len(frame.points),
+            occupancy=occupancy,
+            distinct_targets=distinct,
         )

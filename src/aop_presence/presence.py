@@ -11,10 +11,13 @@ from __future__ import annotations
 from .custom_types import PresenceState
 
 
-class PresenceTracker:
-    """Confirm/clear counter pair driving a two-state machine.
+class Hysteresis:
+    """Generic confirm/clear latch.
 
-    State is per-instance; construct one tracker per sensor stream.
+    Returns True only after ``frames_to_confirm`` consecutive hits, and stays
+    True until ``frames_to_clear`` consecutive misses. Shared by the presence
+    tracker and the multi-object occupancy tracker so both latches behave
+    identically and are tested once.
     """
 
     def __init__(self, frames_to_confirm: int, frames_to_clear: int) -> None:
@@ -22,39 +25,63 @@ class PresenceTracker:
             raise ValueError("frames_to_confirm and frames_to_clear must be >= 1")
         self._frames_to_confirm: int = frames_to_confirm
         self._frames_to_clear: int = frames_to_clear
-        self._state: PresenceState = PresenceState.ABSENT
+        self._latched: bool = False
         self._hits: int = 0
         self._misses: int = 0
 
     @property
-    def state(self) -> PresenceState:
-        return self._state
-
-    @property
-    def is_present(self) -> bool:
-        return self._state is PresenceState.PRESENT
+    def latched(self) -> bool:
+        return self._latched
 
     def reset(self) -> None:
-        self._state = PresenceState.ABSENT
+        self._latched = False
         self._hits = 0
         self._misses = 0
 
-    def update(self, has_target: bool) -> PresenceState:
-        """Advance one frame and return the resulting state."""
-        if has_target:
+    def update(self, hit: bool) -> bool:
+        """Advance one frame and return the latch state."""
+        if hit:
             return self._on_hit()
         return self._on_miss()
 
-    def _on_hit(self) -> PresenceState:
+    def _on_hit(self) -> bool:
         self._misses = 0
         self._hits += 1
         if self._hits >= self._frames_to_confirm:
-            self._state = PresenceState.PRESENT
-        return self._state
+            self._latched = True
+        return self._latched
 
-    def _on_miss(self) -> PresenceState:
+    def _on_miss(self) -> bool:
         self._hits = 0
         self._misses += 1
         if self._misses >= self._frames_to_clear:
-            self._state = PresenceState.ABSENT
-        return self._state
+            self._latched = False
+        return self._latched
+
+
+class PresenceTracker:
+    """Confirm/clear counter pair driving a two-state machine.
+
+    State is per-instance; construct one tracker per sensor stream.
+    """
+
+    def __init__(self, frames_to_confirm: int, frames_to_clear: int) -> None:
+        self._hysteresis: Hysteresis = Hysteresis(frames_to_confirm, frames_to_clear)
+
+    @property
+    def state(self) -> PresenceState:
+        if self._hysteresis.latched:
+            return PresenceState.PRESENT
+        return PresenceState.ABSENT
+
+    @property
+    def is_present(self) -> bool:
+        return self._hysteresis.latched
+
+    def reset(self) -> None:
+        self._hysteresis.reset()
+
+    def update(self, has_target: bool) -> PresenceState:
+        """Advance one frame and return the resulting state."""
+        self._hysteresis.update(has_target)
+        return self.state

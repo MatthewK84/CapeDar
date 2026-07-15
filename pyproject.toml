@@ -14,6 +14,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+pi = [
+    "gpiozero>=2.0",
+    "lgpio>=0.2.2.0",
+]
 gui = [
     "PyQt6>=6.5",
     "pyqtgraph>=0.13",
@@ -30,10 +34,14 @@ dev = [
 ]
 
 [project.scripts]
+capedar = "aop_presence.cli:main"
 aop-presence = "aop_presence.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+aop_presence = ["data/*.cfg", "py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -52,7 +60,7 @@ disallow_subclassing_any = true
 files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
-module = ["pyqtgraph.*", "serial.*"]
+module = ["pyqtgraph.*", "serial.*", "gpiozero.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
