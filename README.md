@@ -1,10 +1,10 @@
 # aop-presence
 
-**BLUF:** A Python package and GUI that turns a TI AWR6843AOPEVM into an object detector. It reports whether something is in front of the sensor, how far away it is, and how big it is. It stays silent when the space is empty.
+**BLUF:** A Python package, GUI, and SSH-friendly headless monitor that turns a TI AWR6843AOPEVM into an object detector. It reports whether something is in front of the sensor, how far away it is, and how big it is. It stays silent when the space is empty.
 
 Runs against real hardware or a built-in simulator, so you can evaluate the GUI before the EVM arrives.
 
-![status](https://img.shields.io/badge/tests-57%20passing-brightgreen)
+![status](https://img.shields.io/badge/tests-60%20passing-brightgreen)
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
 
 ---
@@ -29,11 +29,16 @@ Or activate it from Windows PowerShell:
 .venv\Scripts\Activate.ps1
 ```
 
-Then install the package and its development tools from the repository root, where
-`pyproject.toml` is located:
+For the desktop GUI and development tools, install from the repository root:
 
 ```bash
 python -m pip install -e ".[dev]"
+```
+
+For a headless Raspberry Pi, install only the lightweight core package:
+
+```bash
+python -m pip install -e .
 ```
 
 Try it with no hardware attached:
@@ -47,6 +52,20 @@ Run it against the EVM:
 ```bash
 aop-presence --radar-cfg configs/aop_presence_10fps.cfg
 ```
+
+Run headless over SSH with the saved detection gates:
+
+```bash
+aop-presence --headless \
+  --cli-port /dev/ttyUSB0 \
+  --data-port /dev/ttyUSB1 \
+  --radar-cfg configs/aop_presence_10fps.cfg \
+  --detection-cfg configs/detection_gates.json
+```
+
+Headless mode prints `DETECTED` and `CLEARED` transitions immediately, plus one `STATUS`
+heartbeat per second. Stop it cleanly with `Ctrl+C`. Change the heartbeat period with
+`--status-interval SECONDS`.
 
 Ports autodetect via the CP2105 bridge. Override them when autodetect guesses wrong:
 
@@ -126,7 +145,7 @@ This is a physics limit of the array, not a software defect.
 ## Architecture
 
 ```
-UART bytes -> FrameAssembler -> RadarFrame -> DetectionPipeline -> DetectionReport -> GUI
+UART bytes -> FrameAssembler -> RadarFrame -> DetectionPipeline -> DetectionReport -> GUI/headless
               (parser.py)                     (gate/cluster/size/hysteresis)
 ```
 
@@ -145,6 +164,7 @@ UART bytes -> FrameAssembler -> RadarFrame -> DetectionPipeline -> DetectionRepo
 | `simulator.py` | Byte-exact packet encoder and synthetic target source |
 | `worker.py` | `QThread` that keeps serial reads off the event loop |
 | `gui.py`, `plotview.py` | Qt window and the bird's-eye plot |
+| `headless.py` | SSH-friendly detection events and status heartbeat |
 
 The library has no Qt dependency below `worker.py`. Import `DetectionPipeline` and use it headless in a service.
 

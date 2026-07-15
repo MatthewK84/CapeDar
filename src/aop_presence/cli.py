@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Final
 
 from .config import ConfigValidationError, DetectionConfig, load_detection_config
-from .protocol import SensorError
+from .protocol import ProtocolError, SensorError
 from .sensor import FrameSource, RadarSensor, find_evm_ports
 from .simulator import SimulatedSensor
 
@@ -23,13 +23,23 @@ DEFAULT_CFG: Final[Path] = Path("configs/aop_presence_10fps.cfg")
 def build_parser() -> argparse.ArgumentParser:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="aop-presence",
-        description="Presence and range GUI for the TI AWR6843AOPEVM.",
+        description="Presence and range monitor for the TI AWR6843AOPEVM.",
     )
     parser.add_argument("--cli-port", help="CLI serial port (default: autodetect)")
     parser.add_argument("--data-port", help="Data serial port (default: autodetect)")
     parser.add_argument("--radar-cfg", type=Path, default=DEFAULT_CFG, help="TI .cfg profile")
     parser.add_argument("--detection-cfg", type=Path, help="JSON detection gate overrides")
     parser.add_argument("--simulate", action="store_true", help="Run with no hardware attached")
+    parser.add_argument(
+        "--headless", action="store_true", help="Print detections instead of opening Qt"
+    )
+    parser.add_argument(
+        "--status-interval",
+        type=float,
+        default=1.0,
+        metavar="SECONDS",
+        help="Headless status interval (default: 1.0)",
+    )
     parser.add_argument("--no-configure", action="store_true", help="Skip pushing the .cfg")
     parser.add_argument("--verbose", action="store_true", help="Debug logging")
     return parser
@@ -74,9 +84,23 @@ def run_gui(source: FrameSource, config: DetectionConfig, title: str) -> int:
     return int(app.exec())
 
 
+def run_selected_interface(
+    source: FrameSource, config: DetectionConfig, args: argparse.Namespace
+) -> int:
+    if args.headless:
+        from .headless import run_headless
+
+        return run_headless(source, config, args.status_interval)
+    title: str = "AWR6843AOP Presence (SIMULATED)" if args.simulate else "AWR6843AOP Presence"
+    return run_gui(source, config, title)
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Parse args, open a source, run the GUI. Returns a process exit code."""
-    args: argparse.Namespace = build_parser().parse_args(argv)
+    """Parse args, open a source, and run the selected interface."""
+    parser: argparse.ArgumentParser = build_parser()
+    args: argparse.Namespace = parser.parse_args(argv)
+    if args.status_interval <= 0.0:
+        parser.error("--status-interval must be greater than zero")
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
@@ -87,9 +111,12 @@ def main(argv: list[str] | None = None) -> int:
     except (SensorError, ConfigValidationError) as exc:
         logger.error("Startup failed: %s", exc)
         return EXIT_ERROR
-    title: str = "AWR6843AOP Presence (SIMULATED)" if args.simulate else "AWR6843AOP Presence"
     try:
-        return run_gui(source, config, title)
+        try:
+            return run_selected_interface(source, config, args)
+        except (SensorError, ProtocolError) as exc:
+            logger.error("Monitoring stopped: %s", exc)
+            return EXIT_ERROR
     finally:
         source.close()
 
