@@ -134,7 +134,7 @@ UART bytes -> FrameAssembler -> RadarFrame -> DetectionPipeline -> DetectionRepo
 |--------|---------------|
 | `protocol.py` | Wire constants and the exception hierarchy |
 | `parser.py` | Magic-word sync, header and TLV decode, resync after corruption |
-| `types.py` | Every frozen dataclass crossing a module boundary |
+| `custom_types.py` | Every frozen dataclass crossing a module boundary |
 | `config.py` | `DetectionConfig`, validated at construction |
 | `filters.py` | Per-point SNR, range, and FOV gates |
 | `clustering.py` | Iterative DBSCAN with an explicit queue, no recursion |

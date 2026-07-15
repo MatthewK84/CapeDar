@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .config import DetectionConfig
-    from .types import DetectedPoint
+    from .custom_types import DetectedPoint
 
 
 def passes_snr(point: DetectedPoint, config: DetectionConfig) -> bool:

@@ -1,0 +1,8 @@
+{
+  "min_snr_db": 8.0,
+  "max_range_m": 3.0,
+  "max_azimuth_deg": 35.0,
+  "cluster_eps_m": 0.4,
+  "cluster_min_points": 1,
+  "frames_to_confirm": 1
+}

@@ -21,7 +21,7 @@ from .protocol import (
     TLV_DETECTED_POINTS,
     TLV_DETECTED_POINTS_SIDE_INFO,
 )
-from .types import DetectedPoint, FrameHeader, RadarFrame
+from .custom_types import DetectedPoint, FrameHeader, RadarFrame
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

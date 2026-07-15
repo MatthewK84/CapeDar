@@ -16,7 +16,7 @@ from .protocol import ProtocolError, SensorError
 if TYPE_CHECKING:
     from .pipeline import DetectionPipeline
     from .sensor import FrameSource
-    from .types import DetectionReport, RadarFrame
+    from .custom_types import DetectionReport, RadarFrame
 
 logger: logging.Logger = logging.getLogger(__name__)
 

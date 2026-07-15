@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 
 from .pipeline import DetectionPipeline
 from .plotview import RadarPlot
-from .types import DetectionReport, PresenceState, TargetCluster
+from .custom_types import DetectionReport, PresenceState, TargetCluster
 from .worker import AcquisitionWorker
 
 if TYPE_CHECKING:
@@ -38,7 +38,7 @@ PRESENT_STYLE: Final[str] = (
 ABSENT_STYLE: Final[str] = (
     "background-color:#2b2b2b;color:#9a9a9a;font-size:26px;font-weight:bold;padding:14px;"
 )
-READOUT_STYLE: Final[str] = "font-size:34px;font-weight:bold;color:#e8e8e8;"
+READOUT_STYLE: Final[str] = "font-size:34px;font-weight:bold;color:#444444;"
 DASH: Final[str] = "--"
 
 

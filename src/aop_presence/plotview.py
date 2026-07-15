@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import QVBoxLayout, QWidget
 
 if TYPE_CHECKING:
     from .config import DetectionConfig
-    from .types import DetectedPoint, DetectionReport, TargetCluster
+    from .custom_types import DetectedPoint, DetectionReport, TargetCluster
 
 WEDGE_SEGMENTS: Final[int] = 48
 RING_STEP_M: Final[float] = 1.0
