@@ -29,6 +29,11 @@ if TYPE_CHECKING:
 SDK_VERSION_3_6: Final[int] = 0x03060000
 DEFAULT_FRAME_RATE_HZ: Final[float] = 10.0
 NOISE_FLOOR_DB: Final[float] = 40.0
+# In non-realtime mode, a token sleep between frames prevents the producer
+# thread from flooding the FrameReader queue faster than the consumer can
+# drain it, which would cause consecutive pair frames to be dropped before
+# the detection pipeline can accumulate its confirmation count.
+_NONREALTIME_YIELD_S: Final[float] = 1e-3
 
 
 def _encode_points(points: tuple[DetectedPoint, ...]) -> bytes:
@@ -204,3 +209,5 @@ class SimulatedSensor:
             frame_number += 1
             if self._realtime:
                 time.sleep(self._period_s)
+            else:
+                time.sleep(_NONREALTIME_YIELD_S)
