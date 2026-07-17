@@ -7,7 +7,7 @@ name = "aop-presence"
 version = "0.1.0"
 description = "Presence detection, ranging, and sizing for the TI AWR6843AOPEVM mmWave radar"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12,<3.13"
 license = { text = "MIT" }
 dependencies = [
     "pyserial>=3.5",
@@ -68,7 +68,7 @@ module = ["numpy", "numpy.*"]
 follow_imports = "skip"
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 99
 src = ["src", "tests"]
 

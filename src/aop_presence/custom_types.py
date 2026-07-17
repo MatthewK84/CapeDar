@@ -7,20 +7,20 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Final
 
 DEFAULT_NOISE_DB: Final[float] = 0.0
 
 
-class PresenceState(str, Enum):
+class PresenceState(StrEnum):
     """Output of the presence hysteresis state machine."""
 
     ABSENT = "ABSENT"
     PRESENT = "PRESENT"
 
 
-class OccupancyState(str, Enum):
+class OccupancyState(StrEnum):
     """How many distinct objects are confirmed in front of the sensor.
 
     MULTIPLE is the condition that drives the GPIO signal line. It is a

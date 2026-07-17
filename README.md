@@ -5,7 +5,7 @@
 Runs against real hardware or a built-in simulator, so you can evaluate everything before the EVM arrives. `capedar` takes no required arguments.
 
 ![status](https://img.shields.io/badge/tests-103%20passing-brightgreen)
-![python](https://img.shields.io/badge/python-3.10%2B-blue)
+![python](https://img.shields.io/badge/python-3.12-blue)
 
 ---
 
@@ -14,7 +14,7 @@ Runs against real hardware or a built-in simulator, so you can evaluate everythi
 ```bash
 git clone https://github.com/MatthewK84/CapeDar.git
 cd CapeDar
-python -m venv .venv
+python3.12 -m venv .venv
 ```
 
 Activate the environment on Linux or macOS:
@@ -296,7 +296,7 @@ mypy
 pytest
 ```
 
-CI runs all three on 3.10 through 3.12. The code targets the strict standards in this repo: full type hints, no recursion, functions under 30 lines, no bare excepts, no global mutable state.
+CI runs on Python 3.12. The code targets the strict standards in this repo: full type hints, no recursion, functions under 30 lines, no bare excepts, no global mutable state.
 
 ## Known limitations
 
