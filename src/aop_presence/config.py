@@ -29,13 +29,13 @@ class ConfigValidationError(ValueError):
 class DetectionConfig:
     """Gating, clustering, and hysteresis parameters.
 
-    Defaults are tuned for indoor human presence at 0.3 m to 8 m on the
-    AWR6843AOPEVM running the SDK 3.6 Out-of-Box demo.
+    Defaults are tuned for outdoor motion detection with a short minimum
+    range and a moderate maximum range that favors fast-moving targets.
     """
 
     min_snr_db: float = 12.0
     min_range_m: float = 0.25
-    max_range_m: float = 8.0
+    max_range_m: float = 4.0
     max_azimuth_deg: float = 50.0
     max_elevation_deg: float = 40.0
     max_abs_z_m: float = 2.0

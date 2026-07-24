@@ -201,6 +201,11 @@ class TestPipeline:
 
 
 class TestConfigValidation:
+    def test_defaults_are_tuned_for_outdoor_motion(self) -> None:
+        config = DetectionConfig()
+        assert config.min_range_m == pytest.approx(0.25)
+        assert config.max_range_m == pytest.approx(4.0)
+
     def test_rejects_inverted_range_window(self) -> None:
         with pytest.raises(ConfigValidationError):
             DetectionConfig(min_range_m=5.0, max_range_m=1.0)
