@@ -5,5 +5,5 @@
   "cluster_eps_m": 0.4,
   "cluster_min_points": 1,
   "frames_to_confirm": 1,
-  "frames_to_clear": 7
+  "frames_to_clear": 6
 }
