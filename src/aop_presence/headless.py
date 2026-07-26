@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any, Final, TextIO
 from .custom_types import DetectionReport, OccupancyState, PresenceState
 from .gpio import NullSink
 from .pipeline import DetectionPipeline
+from .protocol import TEMPERATURE_CRITICAL_C, TEMPERATURE_WARN_C
 from .reader import FrameReader
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ EXIT_OK: Final[int] = 0
 EXIT_ERROR: Final[int] = 1
 POLL_TIMEOUT_S: Final[float] = 0.25
 DEFAULT_STALE_TIMEOUT_S: Final[float] = 2.0
+THERMAL_LOG_INTERVAL_S: Final[float] = 30.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +71,12 @@ def report_to_dict(report: DetectionReport) -> dict[str, Any]:
         "raw_points": report.raw_point_count,
         "gated_points": len(report.gated_points),
     }
+    if report.ego is not None:
+        record["ego"] = {
+            "forward_mps": round(report.ego.forward_mps, 2),
+            "trusted": report.ego.trusted,
+            "residual_mps": round(report.ego.residual_mps, 3),
+        }
     if target is not None:
         record["primary"] = {
             "range_m": round(target.range_m, 3),
@@ -187,7 +195,15 @@ class HeadlessMonitor:
             f"STATUS frame={report.frame_number} state={report.state.value} "
             f"occupancy={report.occupancy.value} raw={report.raw_point_count} "
             f"gated={len(report.gated_points)} distinct={report.distinct_count}"
+            f"{self._ego_suffix(report)}"
         )
+
+    def _ego_suffix(self, report: DetectionReport) -> str:
+        """Show the platform speed being subtracted, and whether it is trusted."""
+        if report.ego is None:
+            return ""
+        quality: str = "fit" if report.ego.trusted else "assumed"
+        return f" ego={report.ego.forward_mps:+.2f}m/s({quality})"
 
     def _write(self, message: str) -> None:
         timestamp: str = datetime.now().astimezone().isoformat(timespec="seconds")
@@ -216,6 +232,7 @@ class HeadlessRunner:
         self._monitor: HeadlessMonitor = HeadlessMonitor(self._options, stream)
         self._stop: StopRequest = StopRequest()
         self._last_frame_s: float | None = None
+        self._last_thermal_log_s: float = 0.0
 
     def request_stop(self) -> None:
         """Ask the loop to finish after the current frame."""
@@ -244,9 +261,31 @@ class HeadlessRunner:
             self._handle(frame)
 
     def _handle(self, frame: RadarFrame) -> None:
+        self._check_temperature(frame)
         report: DetectionReport = self._pipeline.process(frame)
         self._sink.set_state(report.multi_target)
         self._monitor.update(report)
+
+    def _check_temperature(self, frame: RadarFrame) -> None:
+        """Warn when the die is running hot. Rate limited so it cannot spam.
+
+        Sunlight does not affect 60 GHz propagation, but it does bake the
+        airframe. Thermal drift and eventual shutdown are the real solar risk.
+        """
+        report = frame.temperature
+        if report is None or not report.valid:
+            return
+        hottest: float = report.hottest_c
+        if hottest < TEMPERATURE_WARN_C:
+            return
+        now: float = time.monotonic()
+        if now - self._last_thermal_log_s < THERMAL_LOG_INTERVAL_S:
+            return
+        self._last_thermal_log_s = now
+        if hottest >= TEMPERATURE_CRITICAL_C:
+            logger.error("Sensor die at %.0f C, at or past the rated limit", hottest)
+            return
+        logger.warning("Sensor die at %.0f C, approaching the rated limit", hottest)
 
     def _check_stale(self, now: float) -> None:
         """Force the line low when the radar has gone quiet for too long."""

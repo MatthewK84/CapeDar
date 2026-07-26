@@ -4,7 +4,7 @@
 
 Runs against real hardware or a built-in simulator, so you can evaluate everything before the EVM arrives. `capedar` takes no required arguments.
 
-![status](https://img.shields.io/badge/tests-103%20passing-brightgreen)
+![status](https://img.shields.io/badge/tests-137%20passing-brightgreen)
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
 
 ---
@@ -148,6 +148,102 @@ inside the same beam and the fix is to move the sensor, not the software.
 
 Occupancy runs its own hysteresis, slower than presence (5 frames to confirm,
 10 to clear, against 3 and 6), because counts are noisier than mere presence.
+
+## Airborne operation on a sUAS
+
+**BLUF: the indoor profile cannot be flown.** It measures plus or minus 0.97 m/s
+of Doppler, which is slower than the aircraft carrying it, and its bundled
+profile clamps the sensor Doppler gate to plus or minus 1.0 m/s. Every return
+falls outside that gate the moment the platform moves. Use the airborne preset:
+
+```bash
+capedar --preset airborne --agl 4 --pitch 25 --gpio on
+```
+
+That selects a retuned chirp and a matching detection config in one step.
+
+### Sunlight and glare do not affect this sensor
+
+A 60 GHz radar does not see light. Sunlight, glare, haze, smoke, and darkness
+change nothing about propagation at this wavelength, which is a large part of
+why radar is worth carrying instead of a camera. Oxygen absorption near 60 GHz
+costs roughly 15 dB/km, or 0.08 dB over a 5 m path, which is nothing.
+
+Sunlight is still a real risk, just a thermal one. An airframe in direct sun
+bakes the sensor, RF performance drifts with die temperature, and the part
+eventually faults. The package now parses the temperature TLV when the firmware
+emits it and warns as the die approaches its rated limit. Mount the EVM with a
+thermal path to airframe metal and keep the radome out of direct sun where the
+airframe allows it.
+
+### What actually breaks when the sensor leaves the ground
+
+| Problem | Effect | Handled by |
+|---|---|---|
+| Ego-motion | Every static object acquires the platform's Doppler; Doppler stops separating movers from clutter | `airborne.py`, fitted from the static field or supplied via `--ego-speed` |
+| Doppler gate | Bundled profile clamps to plus or minus 1.0 m/s and discards everything in flight | `airborne_5m.cfg`, gate opened to plus or minus 13 m/s |
+| Velocity ambiguity | Chirp only measures plus or minus 0.97 m/s, so platform motion aliases | `airborne_5m.cfg`, 31 us chirp period raises this to plus or minus 13.21 m/s |
+| Ground clutter | Any downward tilt fills the range gates with ground | `--agl` and `--pitch` enable ground-plane rejection |
+| Vibration | Rotor noise spreads Doppler around every return | Slower occupancy hysteresis, 8 frames to confirm at 20 Hz |
+| Solar heating | Die temperature drift and eventual fault | Temperature TLV parsing and threshold warnings |
+
+### The two chirp profiles
+
+| | `default.cfg` (indoor) | `airborne_5m.cfg` |
+|---|---|---|
+| Range resolution | 0.044 m | 0.125 m |
+| Max unambiguous range | 11.2 m | 7.97 m |
+| **Max velocity** | **0.97 m/s** | **13.21 m/s** |
+| Velocity resolution | 0.121 m/s | 0.206 m/s |
+| Frame rate | 10 Hz | 20 Hz |
+| Doppler FOV gate | plus or minus 1.0 m/s | plus or minus 13.0 m/s |
+
+The airborne profile trades range resolution for velocity coverage and frame
+rate. That trade is nearly free here: two objects at 5 m are limited to 1.32 m
+separation by the 15 degree azimuth beam, not by range resolution, so 12.5 cm
+range cells cost nothing that the antenna was going to deliver anyway.
+
+### Multiple objects at 5 m
+
+Resolvable separation is set by the azimuth beam, so it grows with range:
+
+| Range | Minimum resolvable separation |
+|---|---|
+| 2 m | 0.53 m |
+| 3 m | 0.79 m |
+| 4 m | 1.05 m |
+| 5 m | 1.32 m |
+
+The airborne preset sets `min_target_separation_m` to 1.35 m to match. Two
+objects closer than that at 5 m return one cluster and are reported as one
+object. That is the antenna, not the software, and no post-processing recovers
+it. Closer than about 3 m the sensor separates people standing side by side.
+
+### Ego-motion, supplied or fitted
+
+Static returns obey `doppler = -v * cos(bearing)`. Fitting that cosine across
+the cloud recovers platform speed with no autopilot feed, which is what the
+preset does by default. The fit is refused, rather than guessed, when there are
+fewer than six points or too little bearing spread, because a cloud dominated by
+one mover will happily fit a speed that is not real.
+
+Prefer telemetry when you have it:
+
+```bash
+capedar --preset airborne --ego-speed 6.5 --agl 4 --pitch 25
+```
+
+Add `--movers-only 1.0` to reject anything moving with the static world. That
+buys strong clutter rejection and gives up static targets, so a parked vehicle
+disappears along with the ground it sits on.
+
+### Before you fly this
+
+The chirp parameters are derived from the SDK chirp equations and checked
+against them in CI, but they have not been run on your unit. Load
+`configs/airborne_5m.cfg` in the TI mmWave Demo Visualizer and confirm the
+reported max range and max velocity first. Then bench the detection end of it
+at 5 m on the ground before adding altitude.
 
 ## Running as a service
 
@@ -300,6 +396,9 @@ CI runs all three on 3.10 through 3.12. The code targets the strict standards in
 
 ## Known limitations
 
+- The airborne chirp profile is derived and unit-tested against the SDK equations, but has not been validated on hardware. Confirm it in the mmWave Demo Visualizer before flight.
+- Ego-motion compensation models forward flight only. Sideslip, climb, and yaw rate are not modelled, and a hard yaw will degrade the fit until it is refused.
+- Ground rejection assumes flat ground at a known height. Sloping terrain biases the computed height and will either leak ground returns or clip low targets.
 - Two objects inside one azimuth beam return one cluster. At 6 m that is anything closer than ~1.6 m together. This is physics, not a bug, and no amount of software recovers it. Move the sensor closer or accept the limit.
 - The multi-object signal counts resolvably distinct scattering centres, not people. A person pushing a cart may read as two objects; two people hugging read as one.
 

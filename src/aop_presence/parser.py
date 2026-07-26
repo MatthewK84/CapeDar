@@ -6,7 +6,7 @@ import logging
 import struct
 import time
 
-from .custom_types import DetectedPoint, FrameHeader, RadarFrame
+from .custom_types import DetectedPoint, FrameHeader, RadarFrame, TemperatureReport
 from .protocol import (
     HEADER_LEN,
     HEADER_STRUCT,
@@ -18,10 +18,13 @@ from .protocol import (
     SIDE_INFO_LEN,
     SIDE_INFO_SCALE_DB,
     SIDE_INFO_STRUCT,
+    TEMPERATURE_LEN,
+    TEMPERATURE_STRUCT,
     TLV_DETECTED_POINTS,
     TLV_DETECTED_POINTS_SIDE_INFO,
     TLV_HEADER_LEN,
     TLV_HEADER_STRUCT,
+    TLV_TEMPERATURE_STATS,
     FramingError,
     PayloadError,
 )
@@ -121,20 +124,41 @@ def attach_side_info(
     return merged
 
 
+def parse_temperature(payload: bytes) -> TemperatureReport | None:
+    """Decode the temperature TLV. Returns None on a short or malformed payload."""
+    if len(payload) < TEMPERATURE_LEN:
+        logger.debug("Temperature TLV too short: %d bytes", len(payload))
+        return None
+    fields = struct.unpack_from(TEMPERATURE_STRUCT, payload, 0)
+    valid: bool = fields[0] != 0
+    sensors: tuple[float, ...] = tuple(float(value) for value in fields[2:12])
+    return TemperatureReport(
+        valid=valid,
+        rx_c=(sensors[0], sensors[1], sensors[2], sensors[3]),
+        tx_c=(sensors[4], sensors[5], sensors[6]),
+        pm_c=sensors[7],
+        dig_c=(sensors[8], sensors[9]),
+    )
+
+
 def parse_packet(packet: bytes, host_timestamp_s: float) -> RadarFrame:
     """Turn one complete magic-word-aligned packet into a RadarFrame."""
     header: FrameHeader = parse_header(packet)
     points: list[DetectedPoint] = []
     side_info: list[tuple[float, float]] = []
+    temperature: TemperatureReport | None = None
     for tlv_type, payload in split_tlvs(packet, header.num_tlvs):
         if tlv_type == TLV_DETECTED_POINTS:
             points = parse_detected_points(payload)
         elif tlv_type == TLV_DETECTED_POINTS_SIDE_INFO:
             side_info = parse_side_info(payload)
+        elif tlv_type == TLV_TEMPERATURE_STATS:
+            temperature = parse_temperature(payload)
     return RadarFrame(
         header=header,
         points=tuple(attach_side_info(points, side_info)),
         host_timestamp_s=host_timestamp_s,
+        temperature=temperature,
     )
 
 

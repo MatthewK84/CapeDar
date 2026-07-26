@@ -23,12 +23,25 @@ TLV_AZIMUTH_STATIC_HEATMAP: Final[int] = 4
 TLV_RANGE_DOPPLER_HEATMAP: Final[int] = 5
 TLV_STATS: Final[int] = 6
 TLV_DETECTED_POINTS_SIDE_INFO: Final[int] = 7
+TLV_AZIMUTH_ELEVATION_HEATMAP: Final[int] = 8
+TLV_TEMPERATURE_STATS: Final[int] = 9
 
 POINT_STRUCT: Final[str] = "<4f"
 POINT_LEN: Final[int] = 16
 SIDE_INFO_STRUCT: Final[str] = "<2h"
 SIDE_INFO_LEN: Final[int] = 4
 SIDE_INFO_SCALE_DB: Final[float] = 0.1
+
+# MmwDemo_temperatureStats: int32 valid, uint32 time, then ten int16 sensors in
+# degrees C (Rx0-3, Tx0-2, PM, Dig0, Dig1).
+TEMPERATURE_STRUCT: Final[str] = "<iI10h"
+TEMPERATURE_LEN: Final[int] = 28
+
+# Direct sunlight on an airframe is a thermal problem, not an RF one. The
+# AWR6843 industrial part is specified to a 105 C junction; derate well below
+# it because RF performance drifts long before the device faults.
+TEMPERATURE_WARN_C: Final[float] = 90.0
+TEMPERATURE_CRITICAL_C: Final[float] = 105.0
 
 PLATFORM_XWR6843: Final[int] = 0xA6843
 

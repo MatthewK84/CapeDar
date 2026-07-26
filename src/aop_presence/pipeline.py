@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 
+from .airborne import apply_airborne_gates
 from .clustering import cluster_points, mean_of
 from .config import DetectionConfig
 from .custom_types import (
@@ -77,7 +78,8 @@ class DetectionPipeline:
 
     def process(self, frame: RadarFrame) -> DetectionReport:
         """Run one frame through gating, clustering, hysteresis, and occupancy."""
-        gated: tuple[DetectedPoint, ...] = gate_points(frame.points, self._config)
+        screened: tuple[DetectedPoint, ...] = gate_points(frame.points, self._config)
+        gated, ego = apply_airborne_gates(screened, self._config)
         targets: tuple[TargetCluster, ...] = find_targets(gated, self._config)
         state: PresenceState = self._tracker.update(len(targets) > 0)
         reported: tuple[TargetCluster, ...] = targets if state is PresenceState.PRESENT else ()
@@ -94,4 +96,5 @@ class DetectionPipeline:
             raw_point_count=len(frame.points),
             occupancy=occupancy,
             distinct_targets=distinct,
+            ego=ego if self._config.airborne_corrections_active else None,
         )
