@@ -15,7 +15,7 @@ from serial.tools import list_ports
 
 from .parser import FrameAssembler
 from .protocol import CLI_BAUD, DATA_BAUD, MAGIC_WORD, ConfigError, SensorError
-from .resources import default_radar_commands, parse_config_text
+from .resources import DEFAULT_CFG_NAME, bundled_radar_commands, parse_config_text
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -158,11 +158,11 @@ class RadarSensor:
         self.apply_commands(commands)
         logger.info("Applied %d config commands from %s", len(commands), config_path)
 
-    def configure_default(self) -> None:
-        """Push the profile bundled inside the package. Needs no files on disk."""
-        commands: list[str] = default_radar_commands()
+    def configure_default(self, profile_name: str = DEFAULT_CFG_NAME) -> None:
+        """Push a profile bundled inside the package. Needs no files on disk."""
+        commands: list[str] = bundled_radar_commands(profile_name)
         self.apply_commands(commands)
-        logger.info("Applied %d config commands from the bundled profile", len(commands))
+        logger.info("Applied %d config commands from bundled %s", len(commands), profile_name)
 
     def apply_commands(self, commands: list[str]) -> None:
         """Push CLI commands line by line. sensorStop first, so re-config works."""

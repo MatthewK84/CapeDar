@@ -12,11 +12,18 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 
-from .config import ConfigValidationError, DetectionConfig, load_detection_config
+from .config import (
+    PRESETS,
+    ConfigValidationError,
+    DetectionConfig,
+    load_detection_config,
+    preset_config,
+)
 from .gpio import DEFAULT_SIGNAL_PIN, GpioError, GpioSettings, NullSink, create_signal_sink
 from .protocol import ProtocolError, SensorError
+from .resources import profile_name_for_preset
 from .sensor import RadarSensor, find_evm_ports
 from .simulator import SCENARIO_PAIR, SCENARIO_SINGLE, SCENARIOS, SimulatedSensor
 
@@ -43,6 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_source_args(parser)
     _add_detection_args(parser)
+    _add_airborne_args(parser)
     _add_interface_args(parser)
     _add_gpio_args(parser)
     parser.add_argument("--verbose", action="store_true", help="Debug logging")
@@ -96,6 +104,45 @@ def _add_detection_args(parser: argparse.ArgumentParser) -> None:
         metavar="METRES",
         help="Objects closer than this count as one; raise it if one person reads as two",
     )
+    group.add_argument(
+        "--preset",
+        choices=sorted(PRESETS),
+        default="indoor",
+        help="indoor keeps the ground-based defaults; airborne retunes for a sUAS at 5 m",
+    )
+
+
+def _add_airborne_args(parser: argparse.ArgumentParser) -> None:
+    """Platform-motion and ground gates. All inert unless explicitly set."""
+    group = parser.add_argument_group("airborne")
+    group.add_argument(
+        "--agl",
+        type=float,
+        default=None,
+        metavar="METRES",
+        help="Height above ground; enables ground-plane rejection when given",
+    )
+    group.add_argument(
+        "--pitch",
+        type=float,
+        default=None,
+        metavar="DEGREES",
+        help="Sensor tilt below horizontal, positive nose-down (default 0)",
+    )
+    group.add_argument(
+        "--ego-speed",
+        type=float,
+        default=None,
+        metavar="MPS",
+        help="Platform forward speed from telemetry; overrides the cloud fit",
+    )
+    group.add_argument(
+        "--movers-only",
+        type=float,
+        default=None,
+        metavar="MPS",
+        help="Reject returns slower than this after ego compensation; drops static targets",
+    )
 
 
 def _add_interface_args(parser: argparse.ArgumentParser) -> None:
@@ -142,16 +189,41 @@ def _add_gpio_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _airborne_overrides(args: argparse.Namespace) -> dict[str, Any]:
+    """Collect only the airborne fields the user actually supplied."""
+    overrides: dict[str, Any] = {}
+    if args.pitch is not None:
+        overrides["sensor_pitch_deg"] = args.pitch
+    if args.agl is not None:
+        overrides["agl_altitude_m"] = args.agl
+        overrides["ground_rejection_enabled"] = args.agl > 0.0
+    if args.ego_speed is not None:
+        overrides["ego_motion_enabled"] = True
+        overrides["ego_estimate_from_cloud"] = False
+        overrides["ego_forward_mps"] = args.ego_speed
+    if args.movers_only is not None:
+        overrides["ego_motion_enabled"] = True
+        overrides["min_relative_velocity_mps"] = args.movers_only
+    return overrides
+
+
 def resolve_detection_config(args: argparse.Namespace) -> DetectionConfig:
-    """Defaults are usable as-is; a file or flag only ever narrows them."""
+    """Build the config: preset, then file, then individual flags.
+
+    A --detection-cfg file replaces the preset outright rather than merging
+    into it, so a saved gate file always means exactly what it says.
+    """
     base: DetectionConfig = (
-        DetectionConfig()
+        preset_config(args.preset)
         if args.detection_cfg is None
         else load_detection_config(args.detection_cfg)
     )
-    if args.min_separation is None:
+    overrides: dict[str, Any] = _airborne_overrides(args)
+    if args.min_separation is not None:
+        overrides["min_target_separation_m"] = args.min_separation
+    if not overrides:
         return base
-    return base.with_overrides(min_target_separation_m=args.min_separation)
+    return base.with_overrides(**overrides)
 
 
 def resolve_configure_mode(args: argparse.Namespace) -> str:
@@ -174,7 +246,7 @@ def apply_profile(sensor: RadarSensor, args: argparse.Namespace) -> None:
     if args.radar_cfg is not None:
         sensor.configure(args.radar_cfg)
         return
-    sensor.configure_default()
+    sensor.configure_default(profile_name_for_preset(args.preset))
 
 
 def open_hardware_source(args: argparse.Namespace) -> RadarSensor:

@@ -62,6 +62,41 @@ class DetectedPoint:
 
 
 @dataclass(frozen=True, slots=True)
+class TemperatureReport:
+    """On-die temperatures from MMWDEMO_OUTPUT_MSG_TEMPERATURE_STATS.
+
+    Only emitted by SDK builds that enable the temperature TLV. Absence means
+    the firmware does not send it, not that the device is cool.
+    """
+
+    valid: bool
+    rx_c: tuple[float, float, float, float]
+    tx_c: tuple[float, float, float]
+    pm_c: float
+    dig_c: tuple[float, float]
+
+    @property
+    def hottest_c(self) -> float:
+        """Highest reported sensor, which is what any limit applies to."""
+        return max((*self.rx_c, *self.tx_c, self.pm_c, *self.dig_c))
+
+
+@dataclass(frozen=True, slots=True)
+class EgoEstimate:
+    """Platform forward speed used to correct Doppler, and how much to trust it.
+
+    ``trusted`` is False when the fit was refused, which happens with too few
+    points or too little bearing spread. An untrusted estimate carries the
+    configured fallback speed, not a guess.
+    """
+
+    forward_mps: float
+    point_count: int
+    residual_mps: float
+    trusted: bool
+
+
+@dataclass(frozen=True, slots=True)
 class FrameHeader:
     """40-byte MmwDemo_output_message_header."""
 
@@ -82,6 +117,7 @@ class RadarFrame:
     header: FrameHeader
     points: tuple[DetectedPoint, ...]
     host_timestamp_s: float
+    temperature: TemperatureReport | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,6 +178,7 @@ class DetectionReport:
     raw_point_count: int = 0
     occupancy: OccupancyState = OccupancyState.EMPTY
     distinct_targets: tuple[TargetCluster, ...] = field(default_factory=tuple)
+    ego: EgoEstimate | None = None
 
     @property
     def primary(self) -> TargetCluster | None:
