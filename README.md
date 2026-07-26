@@ -1,10 +1,15 @@
-# aop-presence
+# CapeDar
+
+Presence, ranging, and multi-object detection for the TI AWR6843AOPEVM mmWave
+radar, indoors, outdoors, and airborne on a sUAS. Installs as `aop-presence`,
+runs as `capedar`.
 
 **BLUF:** A Python package, GUI, and SSH-friendly headless monitor that turns a TI AWR6843AOPEVM into an object detector. It reports whether something is in front of the sensor, how far away it is, and how big it is. It raises a Raspberry Pi GPIO line when more than one object is present. It stays silent when the space is empty.
 
 Runs against real hardware or a built-in simulator, so you can evaluate everything before the EVM arrives. `capedar` takes no required arguments.
 
-![status](https://img.shields.io/badge/tests-137%20passing-brightgreen)
+![status](https://img.shields.io/badge/tests-193%20passing-brightgreen)
+![coverage](https://img.shields.io/badge/coverage-74%25-green)
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
 
 ---
@@ -287,6 +292,35 @@ A target must clear all four to be reported. The GUI shows `NO OBJECT` until the
 
 Stage 4 matters most and is the one people skip. A single frame containing a cluster is not presence. The default requires 3 consecutive frames to latch on and 6 to latch off. At 10 Hz that costs 300 ms of latency and buys a large drop in false alarms.
 
+## Presets and gate files
+
+Three presets ship. `--preset` picks both the detection gates and the chirp
+profile pushed to the sensor, so the two cannot drift apart.
+
+| Preset | Range | Cluster eps | Min points | Confirm | Chirp profile | Source |
+|---|---|---|---|---|---|---|
+| `indoor` (default) | 8 m | 0.35 m | 3 | 3 | `default.cfg` | Derived, bench checked |
+| `outdoor` | 8 m | 0.25 m | 2 | 2 | `default.cfg` | Tuned on hardware in live testing |
+| `airborne` | 5 m | 0.50 m | 3 | 4 | `airborne_5m.cfg` | Derived, **not yet hardware validated** |
+
+```bash
+capedar --preset outdoor
+capedar --preset airborne --agl 4 --pitch 25 --gpio on
+```
+
+The equivalent JSON gate files under `configs/` exist for the GUI and for
+`--detection-cfg`:
+
+| File | What it is |
+|---|---|
+| `detection_gates.json` | The `outdoor` preset. Live-tuned, the sane default for field work |
+| `detection_gates_pi.json` | Same, with a slightly longer clear latch for the Pi |
+| `detection_gates.example.json` | Every field written out, as documentation |
+| `detection_gates_debug.json` | Maximum sensitivity for bench work. Sets `cluster_min_points` and `frames_to_confirm` to 1, which **disables the two stages that suppress phantoms**. Do not field this |
+
+A test asserts that every shipped gate file except the debug one keeps both
+anti-phantom stages on, so this cannot regress by accident.
+
 ## Tuning
 
 Every gate is live-adjustable in the GUI's **Detection gates** panel. Once you find values that work, save them:
@@ -406,6 +440,10 @@ CI runs all three on 3.10 through 3.12. The code targets the strict standards in
 - `clutterRemoval` is off, so a perfectly still target stays visible but static furniture also produces returns. Turn it on if you only care about motion.
 - The `compRangeBiasAndRxChanPhase` values in the shipped `.cfg` are placeholders. Run TI's range bias calibration against a corner reflector for accurate absolute range.
 - Tested against SDK 3.5 and 3.6 frame formats. The 4.x and MMWAVE-L-SDK demos changed TLV layouts and need a different parser.
+
+## Version history
+
+See `CHANGELOG.md`.
 
 ## License
 

@@ -173,8 +173,28 @@ AIRBORNE_5M: Final[DetectionConfig] = DetectionConfig(
 
 INDOOR_DEFAULT: Final[DetectionConfig] = DetectionConfig()
 
+# Tuned on hardware during live outdoor testing, not derived. Tighter cluster
+# radius and a faster latch than indoor, because outdoor targets move and the
+# clutter that survives gating is sparser than a room full of furniture.
+# Mirrors configs/detection_gates.json.
+OUTDOOR_GROUND: Final[DetectionConfig] = DetectionConfig(
+    min_snr_db=8.0,
+    min_range_m=0.25,
+    max_range_m=8.0,
+    max_azimuth_deg=55.0,
+    max_elevation_deg=55.0,
+    max_abs_z_m=2.0,
+    cluster_eps_m=0.25,
+    cluster_min_points=2,
+    frames_to_confirm=2,
+    frames_to_clear=5,
+    multi_frames_to_confirm=2,
+    multi_frames_to_clear=5,
+)
+
 PRESETS: Final[dict[str, DetectionConfig]] = {
     "indoor": INDOOR_DEFAULT,
+    "outdoor": OUTDOOR_GROUND,
     "airborne": AIRBORNE_5M,
 }
 

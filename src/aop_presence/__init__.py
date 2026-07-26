@@ -10,7 +10,13 @@ Public entry points:
 from __future__ import annotations
 
 from .airborne import apply_airborne_gates, estimate_forward_speed, height_above_ground_m
-from .config import AIRBORNE_5M, DetectionConfig, load_detection_config, preset_config
+from .config import (
+    AIRBORNE_5M,
+    OUTDOOR_GROUND,
+    DetectionConfig,
+    load_detection_config,
+    preset_config,
+)
 from .custom_types import (
     DetectedPoint,
     DetectionReport,
@@ -33,10 +39,11 @@ from .reader import FrameReader
 from .sensor import FrameSource, RadarSensor, find_evm_ports
 from .simulator import SimulatedSensor, encode_packet, make_frame
 
-__version__: str = "0.1.0"
+__version__: str = "0.2.0"
 
 __all__ = [
     "AIRBORNE_5M",
+    "OUTDOOR_GROUND",
     "ConfigError",
     "DetectedPoint",
     "DetectionConfig",
