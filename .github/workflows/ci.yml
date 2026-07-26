@@ -40,6 +40,6 @@ jobs:
         run: mypy
 
       - name: Test
-        run: pytest --cov=aop_presence --cov-report=term-missing
+        run: pytest --cov=aop_presence --cov-report=term-missing --cov-fail-under=70
         env:
           QT_QPA_PLATFORM: offscreen
