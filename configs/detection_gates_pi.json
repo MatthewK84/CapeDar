@@ -3,12 +3,8 @@
   "min_range_m": 0.25,
   "max_range_m": 8.0,
   "max_azimuth_deg": 55.0,
-  "max_elevation_deg": 55.0,
-  "max_abs_z_m": 2.0,
-  "cluster_eps_m": 0.25,
-  "cluster_min_points": 2,
-  "frames_to_confirm": 2,
-  "frames_to_clear": 6,
-  "multi_frames_to_confirm": 2,
-  "multi_frames_to_clear": 5
+  "cluster_eps_m": 0.4,
+  "cluster_min_points": 1,
+  "frames_to_confirm": 1,
+  "frames_to_clear": 6
 }

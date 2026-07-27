@@ -441,9 +441,11 @@ CI runs all three on 3.10 through 3.12. The code targets the strict standards in
 - The `compRangeBiasAndRxChanPhase` values in the shipped `.cfg` are placeholders. Run TI's range bias calibration against a corner reflector for accurate absolute range.
 - Tested against SDK 3.5 and 3.6 frame formats. The 4.x and MMWAVE-L-SDK demos changed TLV layouts and need a different parser.
 
-## Version history
+### Quick Example
 
-See `CHANGELOG.md`.
+```bash
+aop-presence --cli-port /dev/ttyUSB0 --data-port /dev/ttyUSB1 --radar-cfg recommended_1.cfg --detection-cfg detection_gates.json --gpio
+```
 
 ## License
 
