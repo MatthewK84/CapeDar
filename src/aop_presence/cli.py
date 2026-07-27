@@ -105,6 +105,48 @@ def _add_detection_args(parser: argparse.ArgumentParser) -> None:
         help="Objects closer than this count as one; raise it if one person reads as two",
     )
     group.add_argument(
+        "--max-range",
+        type=float,
+        default=None,
+        metavar="METRES",
+        help="Range gate ceiling; narrow it when distant clutter dominates",
+    )
+    group.add_argument(
+        "--min-range",
+        type=float,
+        default=None,
+        metavar="METRES",
+        help="Range gate floor",
+    )
+    group.add_argument(
+        "--min-snr",
+        type=float,
+        default=None,
+        metavar="DB",
+        help="Override the SNR gate without editing a file",
+    )
+    group.add_argument(
+        "--cluster-eps",
+        type=float,
+        default=None,
+        metavar="METRES",
+        help="Clustering radius; raise it when one target fragments",
+    )
+    group.add_argument(
+        "--cluster-min-points",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Points needed to form a target. Use 1 for sparse returns",
+    )
+    group.add_argument(
+        "--max-elevation",
+        type=float,
+        default=None,
+        metavar="DEGREES",
+        help="Elevation gate; close targets sit high and a narrow gate clips them",
+    )
+    group.add_argument(
         "--preset",
         choices=sorted(PRESETS),
         default="indoor",
@@ -156,6 +198,11 @@ def _add_interface_args(parser: argparse.ArgumentParser) -> None:
         help="Deprecated; headless is the default and this flag is accepted for compatibility",
     )
     group.add_argument("--json", action="store_true", help="Emit one JSON record per frame")
+    group.add_argument(
+        "--diagnose",
+        action="store_true",
+        help="Report how many points each gate removes, and why nothing is detecting",
+    )
     group.add_argument(
         "--status-interval", type=float, default=1.0, metavar="SECONDS", help="Heartbeat period"
     )
@@ -221,6 +268,18 @@ def resolve_detection_config(args: argparse.Namespace) -> DetectionConfig:
     overrides: dict[str, Any] = _airborne_overrides(args)
     if args.min_separation is not None:
         overrides["min_target_separation_m"] = args.min_separation
+    if args.max_range is not None:
+        overrides["max_range_m"] = args.max_range
+    if args.min_range is not None:
+        overrides["min_range_m"] = args.min_range
+    if args.min_snr is not None:
+        overrides["min_snr_db"] = args.min_snr
+    if args.cluster_eps is not None:
+        overrides["cluster_eps_m"] = args.cluster_eps
+    if args.cluster_min_points is not None:
+        overrides["cluster_min_points"] = args.cluster_min_points
+    if args.max_elevation is not None:
+        overrides["max_elevation_deg"] = args.max_elevation
     if not overrides:
         return base
     return base.with_overrides(**overrides)
@@ -309,6 +368,7 @@ def run_selected_interface(
         sink=build_sink(args),
         stale_timeout_s=args.stale_timeout,
         as_json=args.json,
+        diagnose=args.diagnose,
     )
 
 
@@ -319,6 +379,8 @@ def validate(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         parser.error("--stale-timeout must be greater than zero")
     if args.gui and args.json:
         parser.error("--json has no meaning with --gui")
+    if args.gui and args.diagnose:
+        parser.error("--diagnose has no meaning with --gui")
 
 
 def main(argv: list[str] | None = None) -> int:

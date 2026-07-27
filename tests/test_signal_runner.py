@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from aop_presence.custom_types import RadarFrame
 
 FAST_CONFIG = DetectionConfig(
-    frames_to_confirm=1, multi_frames_to_confirm=2, multi_frames_to_clear=2
+    max_range_m=8.0, frames_to_confirm=1, multi_frames_to_confirm=2, multi_frames_to_clear=2
 )
 
 
@@ -253,7 +253,9 @@ def test_pair_scenario_drives_the_signal_high() -> None:
     """The hardware-free demo must exercise the real signal path."""
     sensor = SimulatedSensor(realtime=False, scenario=SCENARIO_PAIR)
     sink = RecordingSink()
-    runner = HeadlessRunner(sensor, DetectionConfig(), HeadlessOptions(), sink, StringIO())
+    runner = HeadlessRunner(
+        sensor, DetectionConfig(max_range_m=8.0), HeadlessOptions(), sink, StringIO()
+    )
 
     def stop_after_frames() -> None:
         time.sleep(0.8)
@@ -270,7 +272,9 @@ def test_pair_scenario_drives_the_signal_high() -> None:
 def test_single_scenario_never_drives_the_signal_high() -> None:
     sensor = SimulatedSensor(realtime=False)
     sink = RecordingSink()
-    runner = HeadlessRunner(sensor, DetectionConfig(), HeadlessOptions(), sink, StringIO())
+    runner = HeadlessRunner(
+        sensor, DetectionConfig(max_range_m=8.0), HeadlessOptions(), sink, StringIO()
+    )
 
     def stop_after_frames() -> None:
         time.sleep(0.8)
