@@ -4,7 +4,11 @@ Presence, ranging, and multi-object detection for the TI AWR6843AOPEVM mmWave
 radar, indoors, outdoors, and airborne on a sUAS. Installs as `aop-presence`,
 runs as `capedar`.
 
-**BLUF:** A Python package, GUI, and SSH-friendly headless monitor that turns a TI AWR6843AOPEVM into an object detector. It reports whether something is in front of the sensor, how far away it is, and how big it is. It raises a Raspberry Pi GPIO line when more than one object is present. It stays silent when the space is empty.
+**BLUF:** A Python package, GUI, and SSH-friendly headless monitor that turns a
+TI AWR6843AOPEVM into an object detector. It reports whether something is in
+front of the sensor, how far away it is, and how big it is. It raises a
+Raspberry Pi GPIO line immediately for multiple objects, or after one object
+persists for three frames. It stays silent when the space is empty.
 
 Runs against real hardware or a built-in simulator, so you can evaluate everything before the EVM arrives. `capedar` takes no required arguments.
 
@@ -46,8 +50,8 @@ For a headless Raspberry Pi, install only the lightweight core package:
 python -m pip install -e .
 ```
 
-Try it with no hardware attached. The `pair` scene walks a second object into the
-room so you can watch the multi-object signal fire:
+Try it with no hardware attached. The `pair` scene walks a second object into
+the room so you can watch immediate multi-object confirmation:
 
 ```bash
 capedar --simulate --scenario pair
@@ -63,9 +67,10 @@ That autodetects the ports, attaches to the sensor if it is already streaming,
 pushes the bundled profile if it is not, opens the GPIO line if the machine has
 one, and prints to stdout. Every flag narrows that default; none of them enables it.
 
-Headless is the default. It prints `DETECTED` / `CLEARED` for presence,
-`MULTI` / `MULTI-CLEARED` for the signal line, and one `STATUS` heartbeat per
-second. Stop it cleanly with `Ctrl+C`. Add `--gui` for the Qt window.
+Headless is the default. It prints `DETECTED` / `CLEARED` for the detection and
+GPIO transitions, `MULTI` / `MULTI-CLEARED` for occupancy transitions, and one
+`STATUS` heartbeat per second. Stop it cleanly with `Ctrl+C`. Add `--gui` for
+the Qt window.
 
 Emit one JSON record per frame instead, for piping into something else. Logs go
 to stderr, so stdout stays clean:
@@ -87,10 +92,16 @@ On Linux, add yourself to the `dialout` group first, then log out and back in:
 sudo usermod -aG dialout $USER
 ```
 
-## Multi-object signal line
+## Detection signal line
 
-The line goes HIGH while more than one resolvably distinct object is confirmed
-in front of the sensor, and LOW otherwise.
+The line goes HIGH when either:
+
+- two resolvably distinct objects appear in one frame; or
+- one object survives the detection gates for three consecutive frames.
+
+It remains HIGH while presence is latched, then goes LOW after the configured
+number of clear frames. With the Pi gates at 20 Hz, a single object confirms in
+150 ms and clears after 300 ms without a qualifying return.
 
 ### Wiring, Raspberry Pi 5
 
@@ -151,8 +162,10 @@ Past about 6 m, treat the multi-object signal as advisory. If one person reads
 as two, raise `--min-separation`. If two close people read as one, they are
 inside the same beam and the fix is to move the sensor, not the software.
 
-Occupancy runs its own hysteresis, slower than presence (5 frames to confirm,
-10 to clear, against 3 and 6), because counts are noisier than mere presence.
+Occupancy runs its own hysteresis. The field configuration confirms multiple
+objects in one frame, allowing stronger evidence to bypass the three-frame
+single-object delay. The ordinary presence clear latch still prevents the
+physical line from chattering.
 
 ## Airborne operation on a sUAS
 
@@ -189,7 +202,7 @@ airframe allows it.
 | Doppler gate | Bundled profile clamps to plus or minus 1.0 m/s and discards everything in flight | `airborne_5m.cfg`, gate opened to plus or minus 13 m/s |
 | Velocity ambiguity | Chirp only measures plus or minus 0.97 m/s, so platform motion aliases | `airborne_5m.cfg`, 31 us chirp period raises this to plus or minus 13.21 m/s |
 | Ground clutter | Any downward tilt fills the range gates with ground | `--agl` and `--pitch` enable ground-plane rejection |
-| Vibration | Rotor noise spreads Doppler around every return | Slower occupancy hysteresis, 8 frames to confirm at 20 Hz |
+| Vibration | Rotor noise spreads Doppler around every return | Spatial clustering plus three-frame confirmation for a single target |
 | Solar heating | Die temperature drift and eventual fault | Temperature TLV parsing and threshold warnings |
 
 ### The two chirp profiles
@@ -254,7 +267,7 @@ at 5 m on the ground before adding altitude.
 
 ```ini
 [Unit]
-Description=CapeDar multi-object signal
+Description=CapeDar object detection signal
 After=multi-user.target
 
 [Service]
@@ -300,8 +313,8 @@ profile pushed to the sensor, so the two cannot drift apart.
 | Preset | Range | Cluster eps | Min points | Confirm | Chirp profile | Source |
 |---|---|---|---|---|---|---|
 | `indoor` (default) | 8 m | 0.35 m | 3 | 3 | `default.cfg` | Derived, bench checked |
-| `outdoor` | 8 m | 0.25 m | 2 | 2 | `default.cfg` | Tuned on hardware in live testing |
-| `airborne` | 5 m | 0.50 m | 3 | 4 | `airborne_5m.cfg` | Derived, **not yet hardware validated** |
+| `outdoor` | 8 m | 0.25 m | 2 | 3 | `default.cfg` | Tuned on hardware in live testing |
+| `airborne` | 5 m | 0.50 m | 3 | 3 | `airborne_5m.cfg` | Derived, **not yet hardware validated** |
 
 ```bash
 capedar --preset outdoor
@@ -314,9 +327,9 @@ The equivalent JSON gate files under `configs/` exist for the GUI and for
 | File | What it is |
 |---|---|
 | `detection_gates.json` | The `outdoor` preset. Live-tuned, the sane default for field work |
-| `detection_gates_pi.json` | Same, with a slightly longer clear latch for the Pi |
+| `detection_gates_pi.json` | High-sensitivity Pi gates: one-point clusters, three-frame single confirmation, immediate multiple confirmation |
 | `detection_gates.example.json` | Every field written out, as documentation |
-| `detection_gates_debug.json` | Maximum sensitivity for bench work. Sets `cluster_min_points` and `frames_to_confirm` to 1, which **disables the two stages that suppress phantoms**. Do not field this |
+| `detection_gates_debug.json` | Maximum sensitivity for bench work. Sets `cluster_min_points` and `frames_to_confirm` to 1, which **disables both stages that suppress single-point phantoms**. Do not field this |
 
 A test asserts that every shipped gate file except the debug one keeps both
 anti-phantom stages on, so this cannot regress by accident.

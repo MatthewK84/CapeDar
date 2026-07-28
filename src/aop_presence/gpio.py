@@ -1,4 +1,4 @@
-"""Drive a physical signal line when more than one object is confirmed.
+"""Drive a physical signal line when object presence is confirmed.
 
 Wiring, Raspberry Pi 5 40-pin header, physical (BOARD) numbering:
 

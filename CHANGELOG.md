@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- GPIO now follows the `DETECTED` presence state: multiple distinct objects
+  confirm immediately, while one object must persist for three frames.
+- The Pi detection gates retain single-point sensitivity for fast, sparse
+  targets while using three-frame temporal confirmation to suppress flashes.
+
 ## [0.2.0] - 2026-07-26
 
 ### Added

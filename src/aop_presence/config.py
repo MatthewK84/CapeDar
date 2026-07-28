@@ -44,7 +44,7 @@ class DetectionConfig:
 
     min_snr_db: float = 12.0
     min_range_m: float = 0.25
-    max_range_m: float = 4.0
+    max_range_m: float = 8.0
     max_azimuth_deg: float = 50.0
     max_elevation_deg: float = 40.0
     max_abs_z_m: float = 2.0
@@ -53,7 +53,7 @@ class DetectionConfig:
     frames_to_confirm: int = 3
     frames_to_clear: int = 6
     min_target_separation_m: float = DEFAULT_MIN_SEPARATION_M
-    multi_frames_to_confirm: int = 5
+    multi_frames_to_confirm: int = 1
     multi_frames_to_clear: int = 10
     azimuth_resolution_deg: float = DEFAULT_AZIMUTH_RES_DEG
     elevation_resolution_deg: float = DEFAULT_ELEVATION_RES_DEG
@@ -149,7 +149,8 @@ class DetectionConfig:
 #   max_abs_z_m           6.0 a tilted airborne mount puts real targets well
 #                             off the sensor horizontal plane.
 #   min_target_separation 1.35 the azimuth cell at 5 m, not the indoor 0.75 m.
-#   frames_to_confirm     4/8 at 20 Hz this is the same latency as 3/6 at 10 Hz.
+#   frames_to_confirm     3 frames at 20 Hz confirms a single target in 150 ms.
+#   multi confirmation   1 frame lets two distinct targets confirm immediately.
 #   range_resolution_m  0.125 derived from the airborne_5m chirp.
 #   ego_motion            on   platform speed fitted from the static field.
 AIRBORNE_5M: Final[DetectionConfig] = DetectionConfig(
@@ -161,10 +162,10 @@ AIRBORNE_5M: Final[DetectionConfig] = DetectionConfig(
     max_abs_z_m=6.0,
     cluster_eps_m=0.5,
     cluster_min_points=3,
-    frames_to_confirm=4,
+    frames_to_confirm=3,
     frames_to_clear=8,
     min_target_separation_m=AIRBORNE_MIN_SEPARATION_M,
-    multi_frames_to_confirm=8,
+    multi_frames_to_confirm=1,
     multi_frames_to_clear=16,
     range_resolution_m=0.1246,
     ego_motion_enabled=True,
@@ -186,9 +187,9 @@ OUTDOOR_GROUND: Final[DetectionConfig] = DetectionConfig(
     max_abs_z_m=2.0,
     cluster_eps_m=0.25,
     cluster_min_points=2,
-    frames_to_confirm=2,
+    frames_to_confirm=3,
     frames_to_clear=5,
-    multi_frames_to_confirm=2,
+    multi_frames_to_confirm=1,
     multi_frames_to_clear=5,
 )
 

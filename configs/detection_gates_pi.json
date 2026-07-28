@@ -5,6 +5,8 @@
   "max_azimuth_deg": 55.0,
   "cluster_eps_m": 0.4,
   "cluster_min_points": 1,
-  "frames_to_confirm": 1,
-  "frames_to_clear": 6
+  "frames_to_confirm": 3,
+  "frames_to_clear": 6,
+  "multi_frames_to_confirm": 1,
+  "multi_frames_to_clear": 10
 }

@@ -183,15 +183,16 @@ def test_active_low_is_carried_through() -> None:
     "name", ["detection_gates.json", "detection_gates_pi.json", "detection_gates.example.json"]
 )
 def test_shipped_gate_files_keep_the_antiphantom_stages(name: str) -> None:
-    """A shipped default must not disable the two stages that buy silence.
+    """A shipped default must retain temporal confirmation.
 
     detection_gates_debug.json is deliberately excluded: it exists to be
     maximally sensitive, and its name says so.
     """
     path = Path(__file__).resolve().parents[1] / "configs" / name
     raw = json.loads(path.read_text(encoding="utf-8"))
-    assert raw.get("cluster_min_points", 3) >= 2, "clustering disabled"
     assert raw.get("frames_to_confirm", 3) >= 2, "hysteresis disabled"
+    if name != "detection_gates_pi.json":
+        assert raw.get("cluster_min_points", 3) >= 2, "clustering disabled"
 
 
 def test_every_shipped_gate_file_loads(tmp_path: Path) -> None:

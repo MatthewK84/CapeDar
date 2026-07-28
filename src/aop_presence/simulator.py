@@ -153,7 +153,7 @@ class SimulatedSensor:
 
     pair
         The same closing target, joined at frame 45 by a second object 1.6 m
-        to its left. Exercises the multi-object signal path end to end: the
+        to its left. Exercises the immediate multi-object path end to end: the
         line should go HIGH shortly after frame 45 and LOW again after 105.
     """
 

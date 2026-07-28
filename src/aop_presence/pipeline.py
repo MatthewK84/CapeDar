@@ -81,12 +81,21 @@ class DetectionPipeline:
         screened: tuple[DetectedPoint, ...] = gate_points(frame.points, self._config)
         gated, ego = apply_airborne_gates(screened, self._config)
         targets: tuple[TargetCluster, ...] = find_targets(gated, self._config)
-        state: PresenceState = self._tracker.update(len(targets) > 0)
-        reported: tuple[TargetCluster, ...] = targets if state is PresenceState.PRESENT else ()
-        distinct: tuple[TargetCluster, ...] = resolve_distinct(
-            reported, self._config.min_target_separation_m
+        candidate_distinct: tuple[TargetCluster, ...] = resolve_distinct(
+            targets, self._config.min_target_separation_m
         )
-        occupancy: OccupancyState = self._occupancy.update(len(distinct))
+        candidate_occupancy: OccupancyState = self._occupancy.update(len(candidate_distinct))
+        state: PresenceState = self._tracker.update(
+            len(targets) > 0,
+            confirm_immediately=candidate_occupancy is OccupancyState.MULTIPLE,
+        )
+        reported: tuple[TargetCluster, ...] = targets if state is PresenceState.PRESENT else ()
+        distinct: tuple[TargetCluster, ...] = (
+            candidate_distinct if state is PresenceState.PRESENT else ()
+        )
+        occupancy: OccupancyState = (
+            candidate_occupancy if state is PresenceState.PRESENT else OccupancyState.EMPTY
+        )
         return DetectionReport(
             frame_number=frame.header.frame_number,
             host_timestamp_s=frame.host_timestamp_s,
