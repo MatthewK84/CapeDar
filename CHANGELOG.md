@@ -23,6 +23,8 @@ All notable changes to this project are documented here. Format follows
 - Restored the mandatory range `cfarFovCfg` in `aop_presence_10fps.cfg`, which
   SDK 3.6 requires as part of a full configuration before the first
   `sensorStart`.
+- The service installer now detects virtual environments named either `.venv`
+  or `venv`, preventing systemd `203/EXEC` failures from a nonexistent command.
 
 ## [0.2.0] - 2026-07-26
 

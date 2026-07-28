@@ -9,7 +9,7 @@ Type=simple
 User=@SERVICE_USER@
 SupplementaryGroups=@SUPPLEMENTARY_GROUPS@
 WorkingDirectory=@PROJECT_ROOT@
-ExecStart=@PROJECT_ROOT@/.venv/bin/capedar \
+ExecStart=@CAPEDAR_BIN@ \
     --cli-port /dev/ttyUSB0 \
     --data-port /dev/ttyUSB1 \
     --radar-cfg @PROJECT_ROOT@/configs/aop_presence_10fps.cfg \
