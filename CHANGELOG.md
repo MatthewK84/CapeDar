@@ -9,7 +9,7 @@ All notable changes to this project are documented here. Format follows
 ### Added
 
 - Ubuntu Raspberry Pi 5 systemd unit and installer using the production radar,
-  detection-gate, serial-port, and GPIO settings.
+  detection-gate, serial-port, and active-low GPIO settings.
 
 ### Changed
 

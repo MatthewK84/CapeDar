@@ -61,7 +61,8 @@ sed \
 
 install -o root -g root -m 0644 "${temporary_unit}" "${UNIT_TARGET}"
 systemctl daemon-reload
-systemctl enable --now "${SERVICE_NAME}"
+systemctl enable "${SERVICE_NAME}"
+systemctl restart "${SERVICE_NAME}"
 
 echo "Installed and started ${SERVICE_NAME} as ${SERVICE_USER}."
 echo "Status:  systemctl status ${SERVICE_NAME}"
