@@ -288,7 +288,8 @@ sudo ./deploy/install-service.sh ubuntu
 Replace `ubuntu` with the non-root account that owns the checkout if needed.
 When invoked through `sudo`, omitting the name uses the invoking account. The
 installer adds that account to `dialout` and, when present, `gpio`; renders the
-unit with absolute paths to the current checkout; enables it for
+unit with absolute paths to the current checkout; detects either `.venv` or
+`venv`; enables it for
 `multi-user.target`; and starts it immediately. Do not move the checkout after
 installation without reinstalling the unit.
 

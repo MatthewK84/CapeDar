@@ -23,17 +23,28 @@ if ! id "${SERVICE_USER}" >/dev/null 2>&1; then
     exit 1
 fi
 
-readonly CAPEDAR_BIN="${PROJECT_ROOT}/venv/bin/capedar"
 readonly RADAR_CFG="${PROJECT_ROOT}/configs/aop_presence_10fps.cfg"
 readonly DETECTION_CFG="${PROJECT_ROOT}/configs/detection_gates_pi.json"
 
-for required_path in "${CAPEDAR_BIN}" "${RADAR_CFG}" "${DETECTION_CFG}" "${UNIT_TEMPLATE}"; do
+CAPEDAR_BIN=""
+for candidate in \
+    "${PROJECT_ROOT}/.venv/bin/capedar" \
+    "${PROJECT_ROOT}/venv/bin/capedar"; do
+    if [[ -x ${candidate} ]]; then
+        CAPEDAR_BIN="${candidate}"
+        break
+    fi
+done
+if [[ -z ${CAPEDAR_BIN} ]]; then
+    echo "CapeDar is not installed in .venv or venv under ${PROJECT_ROOT}." >&2
+    echo 'Create a venv and run: venv/bin/pip install -e ".[pi]"' >&2
+    exit 1
+fi
+readonly CAPEDAR_BIN
+
+for required_path in "${RADAR_CFG}" "${DETECTION_CFG}" "${UNIT_TEMPLATE}"; do
     if [[ ! -e ${required_path} ]]; then
         echo "Required file is missing: ${required_path}" >&2
-        if [[ ${required_path} == "${CAPEDAR_BIN}" ]]; then
-            echo 'Create the venv and run: venv/bin/pip install -e ".[pi]"' >&2
-        fi
-        exit 1
     fi
 done
 
@@ -48,6 +59,8 @@ usermod --append --groups "${USERMOD_GROUPS}" "${SERVICE_USER}"
 
 escaped_project_root="${PROJECT_ROOT//\\/\\\\}"
 escaped_project_root="${escaped_project_root//&/\\&}"
+escaped_capedar_bin="${CAPEDAR_BIN//\\/\\\\}"
+escaped_capedar_bin="${escaped_capedar_bin//&/\\&}"
 escaped_service_user="${SERVICE_USER//&/\\&}"
 escaped_groups="${SUPPLEMENTARY_GROUPS//&/\\&}"
 
@@ -55,6 +68,7 @@ temporary_unit="$(mktemp)"
 trap 'rm -f -- "${temporary_unit}"' EXIT
 sed \
     -e "s|@PROJECT_ROOT@|${escaped_project_root}|g" \
+    -e "s|@CAPEDAR_BIN@|${escaped_capedar_bin}|g" \
     -e "s|@SERVICE_USER@|${escaped_service_user}|g" \
     -e "s|@SUPPLEMENTARY_GROUPS@|${escaped_groups}|g" \
     "${UNIT_TEMPLATE}" >"${temporary_unit}"
