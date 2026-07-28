@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -12,8 +13,6 @@ from aop_presence.sensor import RadarSensor, find_evm_ports, read_config_lines
 from aop_presence.simulator import encode_packet
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from aop_presence.custom_types import DetectedPoint
 
 PROMPT = b"mmwDemo:/>"
@@ -199,6 +198,23 @@ def test_config_file_comments_and_blanks_are_dropped(tmp_path: Path) -> None:
     path = tmp_path / "p.cfg"
     path.write_text("% a comment\n\nsensorStop\n   \nsensorStart\n", encoding="utf-8")
     assert read_config_lines(path) == ["sensorStop", "sensorStart"]
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "airborne_5m.cfg",
+        "aop_presence_10fps.cfg",
+        "recommended_1.cfg",
+        "recommended_2_no_noise.cfg",
+    ],
+)
+def test_shipped_profiles_configure_both_cfar_fov_directions(name: str) -> None:
+    """SDK 3.6 rejects a first sensorStart unless both FOV blocks were set."""
+    path = Path(__file__).resolve().parents[1] / "configs" / name
+    commands = read_config_lines(path)
+    assert any(command.startswith("cfarFovCfg -1 0 ") for command in commands)
+    assert any(command.startswith("cfarFovCfg -1 1 ") for command in commands)
 
 
 def test_missing_config_file_is_a_config_error(tmp_path: Path) -> None:

@@ -13,6 +13,12 @@ All notable changes to this project are documented here. Format follows
 - The Pi detection gates retain single-point sensitivity for fast, sparse
   targets while using three-frame temporal confirmation to suppress flashes.
 
+### Fixed
+
+- Restored the mandatory range `cfarFovCfg` in `aop_presence_10fps.cfg`, which
+  SDK 3.6 requires as part of a full configuration before the first
+  `sensorStart`.
+
 ## [0.2.0] - 2026-07-26
 
 ### Added
