@@ -15,7 +15,8 @@ ExecStart=@PROJECT_ROOT@/.venv/bin/capedar \
     --radar-cfg @PROJECT_ROOT@/configs/aop_presence_10fps.cfg \
     --detection-cfg @PROJECT_ROOT@/configs/detection_gates_pi.json \
     --configure always \
-    --gpio on
+    --gpio on \
+    --gpio-active-low
 Restart=on-failure
 RestartSec=5s
 TimeoutStopSec=10s

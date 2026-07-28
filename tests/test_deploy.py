@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 UNIT = (ROOT / "deploy" / "capedar.service.in").read_text(encoding="utf-8")
+INSTALLER = (ROOT / "deploy" / "install-service.sh").read_text(encoding="utf-8")
 
 
 def test_service_uses_requested_detection_settings() -> None:
@@ -13,6 +14,7 @@ def test_service_uses_requested_detection_settings() -> None:
     assert "--detection-cfg @PROJECT_ROOT@/configs/detection_gates_pi.json" in UNIT
     assert "--configure always" in UNIT
     assert "--gpio on" in UNIT
+    assert "--gpio-active-low" in UNIT
 
 
 def test_service_restarts_failures_and_stops_cleanly() -> None:
@@ -25,3 +27,8 @@ def test_service_restarts_failures_and_stops_cleanly() -> None:
 def test_service_does_not_run_as_root() -> None:
     assert "User=@SERVICE_USER@" in UNIT
     assert "NoNewPrivileges=yes" in UNIT
+
+
+def test_installer_restarts_an_existing_service_after_updating_it() -> None:
+    assert 'systemctl enable "${SERVICE_NAME}"' in INSTALLER
+    assert 'systemctl restart "${SERVICE_NAME}"' in INSTALLER
