@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aop-presence"
-version = "0.2.0"
+version = "0.2.1"
 description = "Presence detection, ranging, and sizing for the TI AWR6843AOPEVM mmWave radar"
 readme = "README.md"
 requires-python = ">=3.10"

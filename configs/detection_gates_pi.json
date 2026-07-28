@@ -1,10 +1,11 @@
 {
-  "min_snr_db": 8.0,
+  "min_snr_db": 6.0,
   "min_range_m": 0.25,
   "max_range_m": 8.0,
   "max_azimuth_deg": 55.0,
+  "max_elevation_deg": 55.0,
   "cluster_eps_m": 0.4,
   "cluster_min_points": 1,
   "frames_to_confirm": 1,
-  "frames_to_clear": 6
+  "frames_to_clear": 7
 }
