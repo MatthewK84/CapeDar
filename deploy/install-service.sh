@@ -23,7 +23,7 @@ if ! id "${SERVICE_USER}" >/dev/null 2>&1; then
     exit 1
 fi
 
-readonly CAPEDAR_BIN="${PROJECT_ROOT}/.venv/bin/capedar"
+readonly CAPEDAR_BIN="${PROJECT_ROOT}/venv/bin/capedar"
 readonly RADAR_CFG="${PROJECT_ROOT}/configs/aop_presence_10fps.cfg"
 readonly DETECTION_CFG="${PROJECT_ROOT}/configs/detection_gates_pi.json"
 
@@ -31,7 +31,7 @@ for required_path in "${CAPEDAR_BIN}" "${RADAR_CFG}" "${DETECTION_CFG}" "${UNIT_
     if [[ ! -e ${required_path} ]]; then
         echo "Required file is missing: ${required_path}" >&2
         if [[ ${required_path} == "${CAPEDAR_BIN}" ]]; then
-            echo 'Create the venv and run: .venv/bin/pip install -e ".[pi]"' >&2
+            echo 'Create the venv and run: venv/bin/pip install -e ".[pi]"' >&2
         fi
         exit 1
     fi
