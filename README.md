@@ -265,23 +265,58 @@ at 5 m on the ground before adding altitude.
 
 ## Running as a service
 
-```ini
-[Unit]
-Description=CapeDar object detection signal
-After=multi-user.target
+The repository includes a systemd unit and installer for Ubuntu on Raspberry
+Pi 5. The service uses the field configuration established above:
 
-[Service]
-ExecStart=/opt/capedar/.venv/bin/capedar --gpio on
-Restart=on-failure
-User=capedar
-SupplementaryGroups=dialout gpio
+- CLI `/dev/ttyUSB0`, data `/dev/ttyUSB1`
+- `configs/aop_presence_10fps.cfg`
+- `configs/detection_gates_pi.json`
+- `--configure always`, so every service start pushes the complete profile
+- `--gpio on`, so a GPIO problem fails loudly instead of silently disabling the LED
 
-[Install]
-WantedBy=multi-user.target
+On the Pi, from the CapeDar checkout:
+
+```bash
+sudo apt update
+sudo apt install python3-venv python3-pip
+python3 -m venv .venv
+.venv/bin/pip install --upgrade pip
+.venv/bin/pip install -e ".[pi]"
+sudo ./deploy/install-service.sh ubuntu
 ```
 
-No `WorkingDirectory` is needed. The radar profile ships inside the package, so
-nothing depends on where the process starts.
+Replace `ubuntu` with the non-root account that owns the checkout if needed.
+When invoked through `sudo`, omitting the name uses the invoking account. The
+installer adds that account to `dialout` and, when present, `gpio`; renders the
+unit with absolute paths to the current checkout; enables it for
+`multi-user.target`; and starts it immediately. Do not move the checkout after
+installation without reinstalling the unit.
+
+Check status and follow the live terminal output through the journal:
+
+```bash
+sudo systemctl status capedar.service
+sudo journalctl -u capedar.service -f
+```
+
+After editing a radar profile, gate file, or Python source in an editable
+installation, restart the service:
+
+```bash
+sudo systemctl restart capedar.service
+```
+
+The unit restarts five seconds after a startup, serial, or GPIO failure. It
+handles `SIGTERM` normally, drives the LED low, and does not restart after an
+intentional `systemctl stop`.
+
+To disable and remove the service:
+
+```bash
+sudo systemctl disable --now capedar.service
+sudo rm /etc/systemd/system/capedar.service
+sudo systemctl daemon-reload
+```
 
 ## Hardware prerequisites
 

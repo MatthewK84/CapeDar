@@ -1,0 +1,40 @@
+[Unit]
+Description=CapeDar mmWave object detection and GPIO signal
+Documentation=file://@PROJECT_ROOT@/README.md
+After=systemd-udev-trigger.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=@SERVICE_USER@
+SupplementaryGroups=@SUPPLEMENTARY_GROUPS@
+WorkingDirectory=@PROJECT_ROOT@
+ExecStart=@PROJECT_ROOT@/.venv/bin/capedar \
+    --cli-port /dev/ttyUSB0 \
+    --data-port /dev/ttyUSB1 \
+    --radar-cfg @PROJECT_ROOT@/configs/aop_presence_10fps.cfg \
+    --detection-cfg @PROJECT_ROOT@/configs/detection_gates_pi.json \
+    --configure always \
+    --gpio on
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=10s
+KillSignal=SIGTERM
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=capedar
+
+# The service needs serial and gpiochip access, but no writable system paths.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
