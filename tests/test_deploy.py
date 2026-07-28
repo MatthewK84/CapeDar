@@ -14,7 +14,7 @@ def test_service_uses_requested_detection_settings() -> None:
     assert "--detection-cfg @PROJECT_ROOT@/configs/detection_gates_pi.json" in UNIT
     assert "--configure always" in UNIT
     assert "--gpio on" in UNIT
-    assert "--gpio-active-low" in UNIT
+    assert "--gpio-active-low" not in UNIT
 
 
 def test_service_restarts_failures_and_stops_cleanly() -> None:

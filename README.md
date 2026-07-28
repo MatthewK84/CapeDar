@@ -273,7 +273,6 @@ Pi 5. The service uses the field configuration established above:
 - `configs/detection_gates_pi.json`
 - `--configure always`, so every service start pushes the complete profile
 - `--gpio on`, so a GPIO problem fails loudly instead of silently disabling the LED
-- `--gpio-active-low`, because the fielded light asserts when its input is LOW
 
 On the Pi, from the CapeDar checkout:
 
