@@ -274,7 +274,19 @@ Pi 5. The service uses the field configuration established above:
 - `--configure always`, so every service start pushes the complete profile
 - `--gpio on`, so a GPIO problem fails loudly instead of silently disabling the LED
 
-On the Pi, from the CapeDar checkout:
+For a complete first-time setup on the Pi, run this from the CapeDar checkout:
+
+```bash
+sudo ./setup-install.sh ubuntu
+```
+
+Replace `ubuntu` with the non-root account that owns the checkout. When invoked
+through `sudo`, the account name can be omitted to use the invoking account. The
+bootstrapper installs the Python prerequisites, creates `.venv`, installs
+CapeDar with its Raspberry Pi dependencies, and delegates service setup to the
+canonical deployment installer.
+
+To perform those steps individually instead:
 
 ```bash
 sudo apt update
@@ -285,13 +297,10 @@ python3 -m venv .venv
 sudo ./deploy/install-service.sh ubuntu
 ```
 
-Replace `ubuntu` with the non-root account that owns the checkout if needed.
-When invoked through `sudo`, omitting the name uses the invoking account. The
-installer adds that account to `dialout` and, when present, `gpio`; renders the
-unit with absolute paths to the current checkout; detects either `.venv` or
-`venv`; enables it for
-`multi-user.target`; and starts it immediately. Do not move the checkout after
-installation without reinstalling the unit.
+The service installer adds that account to `dialout` and, when present, `gpio`;
+renders the unit with absolute paths to the current checkout; detects either
+`.venv` or `venv`; enables it for `multi-user.target`; and starts it immediately.
+Do not move the checkout after installation without reinstalling the unit.
 
 Check status and follow the live terminal output through the journal:
 
