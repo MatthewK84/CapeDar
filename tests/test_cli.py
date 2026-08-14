@@ -40,6 +40,11 @@ def test_runs_with_no_arguments_at_all() -> None:
     assert args.detection_cfg is None
     assert not args.gui
     assert not args.json
+    assert args.event_log is None
+
+
+def test_event_log_path_is_parsed() -> None:
+    assert parse("--event-log", "/tmp/events.log").event_log == Path("/tmp/events.log")
 
 
 def test_no_argument_config_is_the_plain_default() -> None:

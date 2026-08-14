@@ -167,6 +167,13 @@ def _add_interface_args(parser: argparse.ArgumentParser) -> None:
         metavar="SECONDS",
         help="Force the signal line low after this long without a frame",
     )
+    group.add_argument(
+        "--event-log",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Append detection and GPIO transitions to a rotating forensic log",
+    )
 
 
 def _add_gpio_args(parser: argparse.ArgumentParser) -> None:
@@ -310,6 +317,7 @@ def run_selected_interface(
         sink=build_sink(args),
         stale_timeout_s=args.stale_timeout,
         as_json=args.json,
+        event_log_path=args.event_log,
     )
 
 
@@ -340,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_ERROR
     try:
         return run_selected_interface(source, config, args)
-    except (SensorError, ProtocolError, GpioError) as exc:
+    except (SensorError, ProtocolError, GpioError, OSError) as exc:
         logger.error("Monitoring stopped: %s", exc)
         return EXIT_ERROR
     finally:

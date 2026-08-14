@@ -144,7 +144,11 @@ class GpioSink:
         except Exception as exc:
             raise GpioError(f"Cannot write GPIO {self._settings.pin}: {exc}") from exc
         self._asserted = asserted
-        logger.debug("GPIO %s -> %s", self._settings.pin, "HIGH" if asserted else "LOW")
+        logger.info(
+            "GPIO_TRANSITION pin=%s state=%s",
+            self._settings.pin,
+            "HIGH" if asserted else "LOW",
+        )
 
     def close(self) -> None:
         """De-assert and release the line. Never raises."""

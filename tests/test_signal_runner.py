@@ -12,12 +12,13 @@ import pytest
 from aop_presence.config import DetectionConfig
 from aop_presence.custom_types import DetectedPoint
 from aop_presence.gpio import NullSink
-from aop_presence.headless import HeadlessOptions, HeadlessRunner
+from aop_presence.headless import ForensicEventLog, HeadlessOptions, HeadlessRunner, run_headless
 from aop_presence.reader import FrameReader
 from aop_presence.simulator import SCENARIO_PAIR, SimulatedSensor, make_frame
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from pathlib import Path
 
     from aop_presence.custom_types import RadarFrame
 
@@ -68,6 +69,7 @@ class RecordingSink:
     """Captures every signal transition for assertion."""
 
     def __init__(self) -> None:
+        self.pin = "TEST"
         self.transitions: list[bool] = []
         self.asserted = False
         self.closed = False
@@ -174,6 +176,46 @@ def test_transitions_are_announced() -> None:
     assert "MULTI-CLEARED" in output
     assert "CLEARED " in output
     assert "signal=LOW" in output
+
+
+def test_forensic_log_records_detection_and_gpio_transitions(tmp_path: Path) -> None:
+    path = tmp_path / "events.log"
+    event_log = ForensicEventLog(path)
+    try:
+        runner = HeadlessRunner(
+            ScriptedSource([one_body()] * 3 + [()] * 3),
+            FAST_CONFIG,
+            HeadlessOptions(status_interval_s=99.0),
+            RecordingSink(),
+            StringIO(),
+            event_log,
+        )
+        runner.run()
+    finally:
+        event_log.close()
+
+    output = path.read_text(encoding="utf-8")
+    assert "GPIO_TRANSITION pin=TEST state=HIGH reason=detection frame=2" in output
+    assert "DETECTED frame=2" in output
+    assert "GPIO_TRANSITION pin=TEST state=LOW reason=detection frame=5" in output
+    assert "CLEARED frame=5" in output
+    assert "STATUS" not in output
+
+
+def test_forensic_log_records_session_boundaries(tmp_path: Path) -> None:
+    path = tmp_path / "events.log"
+    assert (
+        run_headless(
+            ScriptedSource([]),
+            FAST_CONFIG,
+            sink=NullSink(),
+            event_log_path=path,
+        )
+        == 0
+    )
+    output = path.read_text(encoding="utf-8")
+    assert "SESSION_STARTED" in output
+    assert "SESSION_STOPPED" in output
 
 
 def test_json_mode_emits_one_record_per_frame() -> None:

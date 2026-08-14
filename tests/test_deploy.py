@@ -17,6 +17,8 @@ def test_service_uses_requested_detection_settings() -> None:
     assert "--detection-cfg @PROJECT_ROOT@/configs/detection_gates_pi.json" in UNIT
     assert "--configure always" in UNIT
     assert "--gpio on" in UNIT
+    assert "--event-log /var/log/capedar/events.log" in UNIT
+    assert "LogsDirectory=capedar" in UNIT
     assert "--gpio-active-low" not in UNIT
 
 

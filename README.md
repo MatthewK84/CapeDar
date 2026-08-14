@@ -309,6 +309,33 @@ sudo systemctl status capedar.service
 sudo journalctl -u capedar.service -f
 ```
 
+### After-use forensic log
+
+The service also writes confirmed detection and GPIO transitions to
+`/var/log/capedar/events.log`. Each entry has a local ISO-8601 timestamp with
+timezone and milliseconds. The log records session start/stop, `DETECTED`,
+`CLEARED`, `MULTI`, stale-radar events, and each successful GPIO transition.
+Status heartbeats are deliberately excluded. The file rotates at 10 MiB and
+keeps five backups (`events.log.1` through `events.log.5`).
+
+Follow it during operation:
+
+```bash
+sudo tail -F /var/log/capedar/events.log
+```
+
+Review it after a run:
+
+```bash
+sudo less /var/log/capedar/events.log
+sudo grep -E 'DETECTED|CLEARED|GPIO_TRANSITION|STALE' /var/log/capedar/events.log*
+```
+
+Because the GPIO transition is recorded only after the write call succeeds, a
+`GPIO_TRANSITION pin=BOARD11 state=HIGH` entry confirms the service commanded
+the physical signal line. The ordinary service diagnostics remain available
+through `journalctl`.
+
 After editing a radar profile, gate file, or Python source in an editable
 installation, restart the service:
 
