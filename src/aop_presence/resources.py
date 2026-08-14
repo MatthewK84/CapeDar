@@ -23,7 +23,6 @@ AIRBORNE_CFG_NAME: Final[str] = "airborne_5m.cfg"
 # the radar is actually running the chirp that produces it.
 PROFILE_FOR_PRESET: Final[dict[str, str]] = {
     "indoor": DEFAULT_CFG_NAME,
-    "sparse": DEFAULT_CFG_NAME,
     "outdoor": DEFAULT_CFG_NAME,
     "airborne": AIRBORNE_CFG_NAME,
 }

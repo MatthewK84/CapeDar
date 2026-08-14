@@ -15,7 +15,7 @@ from aop_presence.multitarget import (
 from aop_presence.pipeline import DetectionPipeline, build_cluster
 from aop_presence.simulator import make_frame
 
-CONFIG = DetectionConfig(max_range_m=8.0)
+CONFIG = DetectionConfig()
 
 
 def blob(x_m: float, y_m: float, snr_db: float = 25.0, z_m: float = 0.0) -> TargetCluster:
@@ -134,7 +134,7 @@ def _two_body_points() -> tuple[DetectedPoint, ...]:
 
 
 def test_pipeline_asserts_multi_target_only_after_confirmation() -> None:
-    config = DetectionConfig(max_range_m=8.0, frames_to_confirm=1, multi_frames_to_confirm=3)
+    config = DetectionConfig(frames_to_confirm=1, multi_frames_to_confirm=3)
     pipeline = DetectionPipeline(config)
     points = _two_body_points()
     first = pipeline.process(make_frame(0, points))
@@ -147,7 +147,7 @@ def test_pipeline_asserts_multi_target_only_after_confirmation() -> None:
 
 
 def test_pipeline_reports_no_multi_target_for_one_object() -> None:
-    config = DetectionConfig(max_range_m=8.0, frames_to_confirm=1, multi_frames_to_confirm=1)
+    config = DetectionConfig(frames_to_confirm=1, multi_frames_to_confirm=1)
     pipeline = DetectionPipeline(config)
     points = tuple(
         DetectedPoint(dx, 4.0 + dy, 0.0, -0.3, 25.0)
@@ -162,7 +162,7 @@ def test_pipeline_reports_no_multi_target_for_one_object() -> None:
 
 def test_empty_room_never_asserts_the_signal() -> None:
     """The whole point: silence in, silence out."""
-    pipeline = DetectionPipeline(DetectionConfig(max_range_m=8.0))
+    pipeline = DetectionPipeline(DetectionConfig())
     for number in range(30):
         report = pipeline.process(make_frame(number, ()))
         assert not report.multi_target
@@ -170,7 +170,7 @@ def test_empty_room_never_asserts_the_signal() -> None:
 
 
 def test_pipeline_reset_clears_occupancy() -> None:
-    config = DetectionConfig(max_range_m=8.0, frames_to_confirm=1, multi_frames_to_confirm=1)
+    config = DetectionConfig(frames_to_confirm=1, multi_frames_to_confirm=1)
     pipeline = DetectionPipeline(config)
     assert pipeline.process(make_frame(0, _two_body_points())).multi_target
     pipeline.reset()

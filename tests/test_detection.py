@@ -13,7 +13,7 @@ from aop_presence.presence import PresenceTracker
 from aop_presence.simulator import make_frame
 from aop_presence.sizing import cross_range_cell_m, estimate_size
 
-CONFIG = DetectionConfig(max_range_m=8.0)
+CONFIG = DetectionConfig()
 
 
 def strong(x: float, y: float, z: float = 0.0) -> DetectedPoint:

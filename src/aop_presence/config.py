@@ -174,11 +174,10 @@ AIRBORNE_5M: Final[DetectionConfig] = DetectionConfig(
 
 INDOOR_DEFAULT: Final[DetectionConfig] = DetectionConfig()
 
-# Tuned on hardware during live outdoor testing against a dense-cloud chirp.
-# REQUIRES a profile that returns several points per target, such as
-# recommended_1.cfg. Against the 10 fps AOP profile, which returns one to three
-# points, cluster_min_points 2 rejects most real targets. Use the sparse preset
-# there instead. Mirrors configs/detection_gates_dense.json.
+# Tuned on hardware during live outdoor testing, not derived. Tighter cluster
+# radius and a faster latch than indoor, because outdoor targets move and the
+# clutter that survives gating is sparser than a room full of furniture.
+# Mirrors configs/detection_gates.json.
 OUTDOOR_GROUND: Final[DetectionConfig] = DetectionConfig(
     min_snr_db=8.0,
     min_range_m=0.25,
@@ -194,28 +193,8 @@ OUTDOOR_GROUND: Final[DetectionConfig] = DetectionConfig(
     multi_frames_to_clear=5,
 )
 
-# What the AWR6843AOP actually returns at 10 fps: one to three points off a
-# person, not the dozen a higher-bandwidth chirp gives. Requiring two or three
-# points per cluster therefore rejects most real targets, and the rejection is
-# invisible because an unclustered point looks exactly like an empty room.
-#
-# Anti-phantom work moves to SNR and hysteresis, which do not depend on how
-# many points a target happens to return this frame.
-SPARSE_RETURNS: Final[DetectionConfig] = DetectionConfig(
-    min_snr_db=6.0,
-    min_range_m=0.25,
-    max_range_m=8.0,
-    max_azimuth_deg=55.0,
-    max_elevation_deg=55.0,
-    cluster_eps_m=0.4,
-    cluster_min_points=1,
-    frames_to_confirm=1,
-    frames_to_clear=6,
-)
-
 PRESETS: Final[dict[str, DetectionConfig]] = {
     "indoor": INDOOR_DEFAULT,
-    "sparse": SPARSE_RETURNS,
     "outdoor": OUTDOOR_GROUND,
     "airborne": AIRBORNE_5M,
 }

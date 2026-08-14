@@ -12,8 +12,8 @@ persists for three frames. It stays silent when the space is empty.
 
 Runs against real hardware or a built-in simulator, so you can evaluate everything before the EVM arrives. `capedar` takes no required arguments.
 
-![status](https://img.shields.io/badge/tests-210%20passing-brightgreen)
-![coverage](https://img.shields.io/badge/coverage-76%25-green)
+![status](https://img.shields.io/badge/tests-193%20passing-brightgreen)
+![coverage](https://img.shields.io/badge/coverage-74%25-green)
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
 
 ---
@@ -341,90 +341,6 @@ A target must clear all four to be reported. The GUI shows `NO OBJECT` until the
 
 Stage 4 matters most and is the one people skip. A single frame containing a cluster is not presence. The default requires 3 consecutive frames to latch on and 6 to latch off. At 10 Hz that costs 300 ms of latency and buys a large drop in false alarms.
 
-## When it detects nothing
-
-Start here, and stop guessing:
-
-```bash
-capedar --diagnose
-```
-
-That reports how many points each gate removes, the spread of the raw returns,
-and a hint naming the stage responsible. A detector reporting nothing looks
-exactly like an empty room, and this is the difference between the two.
-
-```
-DIAG frames=96 raw=216 confirmed_frames=37 starved=76
-  snr         216 -> 216    -0%        >= 8.0 dB
-  range       216 -> 216    -0%        0.25 to 8.00 m
-  angles      216 -> 216    -0%        az <= 55, el <= 55 deg
-  height      216 -> 216    -0%        |z| <= 2.00 m
-  clusters       27 formed
-raw return spread (min / median / max)
-  range        0.68     1.05     1.39  m
-  ...
-HINT 76 of 96 frames had points clear every gate but form no cluster.
-     Lower cluster_min_points (now 2) or raise cluster_eps_m (now 0.25 m).
-```
-
-### Symptom: nothing detects unless you pick the sensor up and wave it
-
-The sensor is discarding stationary returns. Two causes, both in the chirp
-profile:
-
-- `clutterRemoval -1 1` subtracts the zero-Doppler bin, which deletes anything
-  not moving toward or away from the sensor. Waving the sensor gives every
-  static object a Doppler shift, which is why motion "fixes" it. Set it to 0
-  for presence detection.
-- `cfarFovCfg -1 1 <min> <max>` gates Doppler at the sensor. A narrow window
-  removes slow and stationary targets before the host ever sees them.
-
-Check both with `grep -E "clutterRemoval|cfarFovCfg" <your.cfg>`.
-
-### Symptom: detects at the edges of the range but not right in front
-
-Two independent causes, and `--diagnose` distinguishes them.
-
-**Elevation clipping.** Elevation angle grows sharply as targets get closer. A
-person standing 1 m away puts their head near 39 degrees above boresight; the
-same person at 4 m sits inside 12 degrees. A 40 degree elevation gate therefore
-blinds the sensor to near targets while leaving far ones untouched, which reads
-exactly as "sees the edges, not the middle".
-
-```bash
-capedar --diagnose --max-elevation 75
-```
-
-If the `angles` row stops losing points, that was it.
-
-**CFAR near-range blindness.** Non-cyclic CFAR cannot test the first
-`winLen + guardLen` range bins. With `cfarCfg -1 0 2 8 4 3 0 15 1` that is 12
-bins, or about 0.5 m at 4.4 cm resolution. Nothing in software recovers this;
-move the target out past 0.6 m or shorten the CFAR window.
-
-### Symptom: it used to detect and now it does not
-
-Check `cluster_min_points` first. The AWR6843AOP at 10 fps returns one to three
-points off a person, not the dozen a wider-bandwidth chirp delivers. Requiring
-two points per cluster rejects most real targets, and the rejection is silent.
-
-```bash
-capedar --preset sparse --diagnose
-```
-
-The `sparse` preset is built for exactly this: single-point clusters, with the
-anti-phantom work moved to SNR and hysteresis, which do not care how many
-points a target happens to return this frame.
-
-### Tuning without editing files
-
-Every gate is a flag, so you can sweep in the field:
-
-```bash
-capedar --diagnose --min-snr 4 --cluster-min-points 1 --cluster-eps 0.5
-capedar --diagnose --max-range 4 --max-elevation 75
-```
-
 ## Presets and gate files
 
 Three presets ship. `--preset` picks both the detection gates and the chirp
@@ -451,12 +367,8 @@ The equivalent JSON gate files under `configs/` exist for the GUI and for
 | `detection_gates.example.json` | Every field written out, as documentation |
 | `detection_gates_debug.json` | Maximum sensitivity for bench work. Sets `cluster_min_points` and `frames_to_confirm` to 1, which **disables both stages that suppress single-point phantoms**. Do not field this |
 
-A test pins `cluster_min_points` to 1 in the two field gate files. It was
-raised to 2 once, on the reasoning that single-point clusters defeat the
-anti-phantom design, and detection stopped. That reasoning was wrong for this
-antenna: with one to three returns per target, requiring two points rejects the
-target itself. Do not raise it again without field evidence that the returns
-got denser.
+A test asserts that every shipped gate file except the debug one keeps both
+anti-phantom stages on, so this cannot regress by accident.
 
 ## Tuning
 

@@ -13,7 +13,6 @@ from .airborne import apply_airborne_gates, estimate_forward_speed, height_above
 from .config import (
     AIRBORNE_5M,
     OUTDOOR_GROUND,
-    SPARSE_RETURNS,
     DetectionConfig,
     load_detection_config,
     preset_config,
@@ -30,7 +29,6 @@ from .custom_types import (
     TargetSize,
     TemperatureReport,
 )
-from .diagnostics import DiagnosticAccumulator, analyse_frame
 from .gpio import GpioError, GpioSettings, GpioSink, NullSink, SignalSink, create_signal_sink
 from .multitarget import OccupancyTracker, resolve_distinct
 from .parser import FrameAssembler, parse_packet
@@ -41,18 +39,16 @@ from .reader import FrameReader
 from .sensor import FrameSource, RadarSensor, find_evm_ports
 from .simulator import SimulatedSensor, encode_packet, make_frame
 
-__version__: str = "0.2.1"
+__version__: str = "0.2.0"
 
 __all__ = [
     "AIRBORNE_5M",
     "OUTDOOR_GROUND",
-    "SPARSE_RETURNS",
     "ConfigError",
     "DetectedPoint",
     "DetectionConfig",
     "DetectionPipeline",
     "DetectionReport",
-    "DiagnosticAccumulator",
     "EgoEstimate",
     "FrameAssembler",
     "FrameHeader",
@@ -77,7 +73,6 @@ __all__ = [
     "TargetSize",
     "TemperatureReport",
     "__version__",
-    "analyse_frame",
     "apply_airborne_gates",
     "create_signal_sink",
     "encode_packet",

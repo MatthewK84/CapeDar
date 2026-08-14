@@ -21,7 +21,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Final, TextIO
 
 from .custom_types import DetectionReport, OccupancyState, PresenceState
-from .diagnostics import DiagnosticAccumulator
 from .gpio import NullSink
 from .pipeline import DetectionPipeline
 from .protocol import TEMPERATURE_CRITICAL_C, TEMPERATURE_WARN_C
@@ -51,7 +50,6 @@ class HeadlessOptions:
     status_interval_s: float = 1.0
     stale_timeout_s: float = DEFAULT_STALE_TIMEOUT_S
     as_json: bool = False
-    diagnose: bool = False
 
     def __post_init__(self) -> None:
         if self.status_interval_s <= 0.0:
@@ -234,11 +232,6 @@ class HeadlessRunner:
         self._stop: StopRequest = StopRequest()
         self._last_frame_s: float | None = None
         self._last_thermal_log_s: float = 0.0
-        self._diagnostics: DiagnosticAccumulator | None = (
-            DiagnosticAccumulator(config) if self._options.diagnose else None
-        )
-        self._last_diag_s: float = 0.0
-        self._stream: TextIO = stream or sys.stdout
 
     def request_stop(self) -> None:
         """Ask the loop to finish after the current frame."""
@@ -271,19 +264,6 @@ class HeadlessRunner:
         report: DetectionReport = self._pipeline.process(frame)
         self._sink.set_state(report.state is PresenceState.PRESENT)
         self._monitor.update(report)
-        self._update_diagnostics(frame, report)
-
-    def _update_diagnostics(self, frame: RadarFrame, report: DetectionReport) -> None:
-        """Fold the frame into the attrition report and print it periodically."""
-        if self._diagnostics is None:
-            return
-        self._diagnostics.update(frame, report.state is PresenceState.PRESENT)
-        now: float = time.monotonic()
-        if now - self._last_diag_s < self._options.status_interval_s:
-            return
-        self._last_diag_s = now
-        self._stream.write(f"{self._diagnostics.render()}\n")
-        self._stream.flush()
 
     def _check_temperature(self, frame: RadarFrame) -> None:
         """Warn when the die is running hot. Rate limited so it cannot spam.
@@ -317,15 +297,8 @@ class HeadlessRunner:
         self._monitor.note_stale()
         self._last_frame_s = None
 
-    def _write_final_diagnostics(self) -> None:
-        if self._diagnostics is None or self._diagnostics.frames == 0:
-            return
-        self._stream.write(f"{self._diagnostics.render()}\n")
-        self._stream.flush()
-
     def _shutdown(self) -> None:
         """De-assert first, then release everything. Never raises."""
-        self._write_final_diagnostics()
         try:
             self._sink.set_state(False)
         except Exception as exc:
@@ -350,14 +323,12 @@ def run_headless(
     sink: SignalSink | None = None,
     stale_timeout_s: float = DEFAULT_STALE_TIMEOUT_S,
     as_json: bool = False,
-    diagnose: bool = False,
 ) -> int:
     """Process frames headlessly until interrupted. Returns a process exit code."""
     options: HeadlessOptions = HeadlessOptions(
         status_interval_s=status_interval_s,
         stale_timeout_s=stale_timeout_s,
         as_json=as_json,
-        diagnose=diagnose,
     )
     runner: HeadlessRunner = HeadlessRunner(source, config, options, sink)
     if not as_json:
