@@ -9,6 +9,8 @@
   "cluster_min_points": 3,
   "frames_to_confirm": 3,
   "frames_to_clear": 6,
+  "multi_frames_to_confirm": 1,
+  "multi_frames_to_clear": 10,
   "azimuth_resolution_deg": 15.0,
   "elevation_resolution_deg": 30.0,
   "range_resolution_m": 0.044

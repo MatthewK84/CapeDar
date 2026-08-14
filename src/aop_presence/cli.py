@@ -43,7 +43,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="capedar",
         description=(
-            "Presence, ranging, and multi-object signalling for the TI AWR6843AOPEVM. "
+            "Presence, ranging, and object-detection signalling for the TI "
+            "AWR6843AOPEVM. "
             "Runs with no arguments."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -84,7 +85,7 @@ def _add_source_args(parser: argparse.ArgumentParser) -> None:
         "--scenario",
         choices=SCENARIOS,
         default=SCENARIO_SINGLE,
-        help=f"Simulated scene; {SCENARIO_PAIR} exercises the multi-object signal",
+        help=f"Simulated scene; {SCENARIO_PAIR} exercises immediate multi confirmation",
     )
 
 
@@ -335,9 +336,9 @@ def build_sink(args: argparse.Namespace) -> SignalSink:
     settings: GpioSettings = GpioSettings(pin=args.gpio_pin, active_high=not args.gpio_active_low)
     sink: SignalSink = create_signal_sink(args.gpio, settings)
     if isinstance(sink, NullSink):
-        logger.info("No signal line; multi-object events will be printed only")
+        logger.info("No signal line; detection events will be printed only")
     else:
-        logger.info("Signal line on %s asserts while >1 object is confirmed", args.gpio_pin)
+        logger.info("Signal line on %s follows confirmed detection", args.gpio_pin)
     return sink
 
 

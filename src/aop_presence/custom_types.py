@@ -23,9 +23,9 @@ class PresenceState(str, Enum):
 class OccupancyState(str, Enum):
     """How many distinct objects are confirmed in front of the sensor.
 
-    MULTIPLE is the condition that drives the GPIO signal line. It is a
-    separate state machine from PresenceState because cluster counts are far
-    less stable than mere presence and need their own, slower, hysteresis.
+    This is a separate state machine from PresenceState because cluster counts
+    are less stable than mere presence. A confirmed MULTIPLE state can bypass
+    the ordinary single-target presence confirmation delay.
     """
 
     EMPTY = "EMPTY"
@@ -194,5 +194,5 @@ class DetectionReport:
 
     @property
     def multi_target(self) -> bool:
-        """True while more than one distinct object is confirmed. Drives the signal line."""
+        """True while more than one distinct object is confirmed."""
         return self.occupancy is OccupancyState.MULTIPLE

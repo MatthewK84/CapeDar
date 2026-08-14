@@ -22,7 +22,10 @@ if TYPE_CHECKING:
     from aop_presence.custom_types import RadarFrame
 
 FAST_CONFIG = DetectionConfig(
-    max_range_m=8.0, frames_to_confirm=1, multi_frames_to_confirm=2, multi_frames_to_clear=2
+    frames_to_confirm=3,
+    frames_to_clear=3,
+    multi_frames_to_confirm=1,
+    multi_frames_to_clear=2,
 )
 
 
@@ -93,14 +96,21 @@ def run(script: list[tuple[DetectedPoint, ...]], sink: RecordingSink) -> str:
 
 def test_signal_asserts_for_two_objects() -> None:
     sink = RecordingSink()
-    run([two_bodies()] * 5, sink)
+    run([two_bodies()], sink)
     # The trailing False is the shutdown de-assert, not a detection event.
     assert sink.transitions[0] is True
 
 
-def test_signal_stays_low_for_one_object() -> None:
+def test_signal_asserts_after_three_single_object_frames() -> None:
     sink = RecordingSink()
-    run([one_body()] * 8, sink)
+    output = run([one_body()] * 3, sink)
+    assert sink.transitions == [True, False]
+    assert "DETECTED frame=2" in output
+
+
+def test_signal_stays_low_before_three_single_object_frames() -> None:
+    sink = RecordingSink()
+    run([one_body()] * 2, sink)
     assert sink.transitions == []
 
 
@@ -110,10 +120,18 @@ def test_signal_stays_low_in_an_empty_room() -> None:
     assert sink.transitions == []
 
 
-def test_signal_clears_when_second_object_leaves() -> None:
+def test_signal_stays_high_when_one_of_two_objects_remains() -> None:
     sink = RecordingSink()
-    run([two_bodies()] * 5 + [one_body()] * 5, sink)
+    output = run([two_bodies()] + [one_body()] * 5, sink)
     assert sink.transitions == [True, False]
+    assert " CLEARED frame=" not in output
+
+
+def test_signal_clears_after_all_objects_leave() -> None:
+    sink = RecordingSink()
+    output = run([one_body()] * 3 + [()] * 3, sink)
+    assert sink.transitions == [True, False]
+    assert "CLEARED frame=5" in output
 
 
 def test_signal_is_low_after_the_source_ends() -> None:
@@ -148,11 +166,13 @@ def test_signal_is_low_after_source_raises() -> None:
 
 def test_transitions_are_announced() -> None:
     sink = RecordingSink()
-    output = run([two_bodies()] * 5 + [one_body()] * 5, sink)
+    output = run([two_bodies()] + [()] * 3, sink)
+    assert "DETECTED " in output
+    assert "signal=HIGH" in output
     assert "MULTI " in output
     assert "objects=2" in output
-    assert "signal=HIGH" in output
     assert "MULTI-CLEARED" in output
+    assert "CLEARED " in output
     assert "signal=LOW" in output
 
 
@@ -269,7 +289,7 @@ def test_pair_scenario_drives_the_signal_high() -> None:
     assert not sink.asserted
 
 
-def test_single_scenario_never_drives_the_signal_high() -> None:
+def test_single_scenario_drives_the_signal_high_after_confirmation() -> None:
     sensor = SimulatedSensor(realtime=False)
     sink = RecordingSink()
     runner = HeadlessRunner(
@@ -284,7 +304,8 @@ def test_single_scenario_never_drives_the_signal_high() -> None:
 
     threading.Thread(target=stop_after_frames, daemon=True).start()
     runner.run()
-    assert sink.transitions == []
+    assert True in sink.transitions
+    assert not sink.asserted
 
 
 def test_simulator_rejects_unknown_scenario() -> None:

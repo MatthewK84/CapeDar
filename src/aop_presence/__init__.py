@@ -1,10 +1,10 @@
-"""Presence detection, ranging, sizing, and multi-object signalling for the AWR6843AOPEVM.
+"""Presence detection, ranging, sizing, and GPIO signalling for the AWR6843AOPEVM.
 
 Public entry points:
     DetectionPipeline -- RadarFrame -> DetectionReport
     RadarSensor       -- serial link to the EVM
     SimulatedSensor   -- hardware-free frame source
-    create_signal_sink -- GPIO line that asserts while >1 object is confirmed
+    create_signal_sink -- GPIO line that follows confirmed object presence
 """
 
 from __future__ import annotations

@@ -38,16 +38,21 @@ class Hysteresis:
         self._hits = 0
         self._misses = 0
 
-    def update(self, hit: bool) -> bool:
-        """Advance one frame and return the latch state."""
+    def update(self, hit: bool, confirm_immediately: bool = False) -> bool:
+        """Advance one frame and return the latch state.
+
+        ``confirm_immediately`` is used when stronger evidence than an ordinary
+        single-target hit is available, such as two resolvably distinct objects
+        in the same frame.
+        """
         if hit:
-            return self._on_hit()
+            return self._on_hit(confirm_immediately)
         return self._on_miss()
 
-    def _on_hit(self) -> bool:
+    def _on_hit(self, confirm_immediately: bool = False) -> bool:
         self._misses = 0
         self._hits += 1
-        if self._hits >= self._frames_to_confirm:
+        if confirm_immediately or self._hits >= self._frames_to_confirm:
             self._latched = True
         return self._latched
 
@@ -81,7 +86,11 @@ class PresenceTracker:
     def reset(self) -> None:
         self._hysteresis.reset()
 
-    def update(self, has_target: bool) -> PresenceState:
-        """Advance one frame and return the resulting state."""
-        self._hysteresis.update(has_target)
+    def update(self, has_target: bool, confirm_immediately: bool = False) -> PresenceState:
+        """Advance one frame and return the resulting state.
+
+        A caller may bypass the ordinary confirmation count when the current
+        frame contains stronger evidence, while retaining the same clear latch.
+        """
+        self._hysteresis.update(has_target, confirm_immediately)
         return self.state

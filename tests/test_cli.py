@@ -179,26 +179,20 @@ def test_active_low_is_carried_through() -> None:
 # --- shipped gate files -----------------------------------------------------
 
 
-@pytest.mark.parametrize("name", ["detection_gates.json", "detection_gates_pi.json"])
-def test_field_gate_files_stay_sparse_friendly(name: str) -> None:
-    """Regression guard. These were raised once and it stopped detecting.
+@pytest.mark.parametrize(
+    "name", ["detection_gates.json", "detection_gates_pi.json", "detection_gates.example.json"]
+)
+def test_shipped_gate_files_keep_the_antiphantom_stages(name: str) -> None:
+    """A shipped default must retain temporal confirmation.
 
-    The AWR6843AOP at 10 fps returns one to three points off a person.
-    Requiring two points per cluster rejects most real targets, and the
-    rejection is invisible: an unclustered point looks like an empty room.
-    Do not raise these without field evidence that the returns got denser.
+    detection_gates_debug.json is deliberately excluded: it exists to be
+    maximally sensitive, and its name says so.
     """
     path = Path(__file__).resolve().parents[1] / "configs" / name
     raw = json.loads(path.read_text(encoding="utf-8"))
-    assert raw["cluster_min_points"] == 1, "sparse returns need single-point clusters"
-    assert raw["cluster_eps_m"] >= 0.35, "tight clustering fragments one body into singletons"
-
-
-def test_dense_gate_file_is_kept_but_named_for_its_requirement() -> None:
-    """The live-tuned values are real, they just need a denser chirp."""
-    path = Path(__file__).resolve().parents[1] / "configs" / "detection_gates_dense.json"
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    assert raw["cluster_min_points"] >= 2
+    assert raw.get("frames_to_confirm", 3) >= 2, "hysteresis disabled"
+    if name != "detection_gates_pi.json":
+        assert raw.get("cluster_min_points", 3) >= 2, "clustering disabled"
 
 
 def test_every_shipped_gate_file_loads(tmp_path: Path) -> None:

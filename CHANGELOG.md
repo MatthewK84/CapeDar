@@ -4,46 +4,27 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.1] - 2026-07-27
-
-### Fixed
-
-- **Detection regression introduced in 0.2.0.** `configs/detection_gates.json`
-  and `detection_gates_pi.json` had `cluster_min_points` raised from 1 to 2 and
-  `cluster_eps_m` tightened from 0.40 to 0.25 m. The AWR6843AOP at 10 fps
-  returns one to three points off a person, so requiring two points per cluster
-  rejected most real targets. Reverted to the values that detect in the field.
-  A test now pins them.
-- **`clutterRemoval` set to 0 in `aop_presence_10fps.cfg`.** At 1 it subtracts
-  the zero-Doppler bin, deleting anything not moving relative to the sensor.
-  This is the cause of "nothing detects unless I wave the sensor around".
-- **Doppler FOV gate removed from `aop_presence_10fps.cfg`,** and the range FOV
-  restored. Gating Doppler at the sensor can silently delete a standing person.
-- **CI was red on main.** The 4.0 m `max_range_m` default merged from
-  `live_testing` put ten tests' targets outside the range gate. Those tests now
-  declare the range they need instead of depending on a mutable default. The
-  4.0 m default is kept.
+## [Unreleased]
 
 ### Added
 
-- **`--diagnose`.** Reports how many points each gate removes, the spread of
-  raw returns, and a hint naming the responsible stage. Detects the silent
-  failure where points clear every gate and then form no cluster, which is
-  indistinguishable from an empty room without it.
-- **`sparse` preset**, for antennas returning one to three points per target.
-  Single-point clusters, with anti-phantom work carried by SNR and hysteresis.
-- **Live tuning flags**, so gates can be swept in the field without editing
-  JSON: `--min-snr`, `--cluster-eps`, `--cluster-min-points`, `--max-elevation`,
-  `--max-range`, `--min-range`.
-- `configs/detection_gates_dense.json`, preserving the live-tuned values under a
-  name that states what they require.
-- README troubleshooting section keyed to observed field symptoms.
+- Ubuntu Raspberry Pi 5 systemd unit and installer using the production radar,
+  detection-gate, serial-port, and active-high GPIO settings.
 
 ### Changed
 
-- `filters.passes_field_of_view` split into `passes_angles` and `passes_height`
-  so diagnostics and the hot path share one source of truth. Behaviour is
-  unchanged.
+- GPIO now follows the `DETECTED` presence state: multiple distinct objects
+  confirm immediately, while one object must persist for three frames.
+- The Pi detection gates retain single-point sensitivity for fast, sparse
+  targets while using three-frame temporal confirmation to suppress flashes.
+
+### Fixed
+
+- Restored the mandatory range `cfarFovCfg` in `aop_presence_10fps.cfg`, which
+  SDK 3.6 requires as part of a full configuration before the first
+  `sensorStart`.
+- The service installer now detects virtual environments named either `.venv`
+  or `venv`, preventing systemd `203/EXEC` failures from a nonexistent command.
 
 ## [0.2.0] - 2026-07-26
 

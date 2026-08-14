@@ -3,10 +3,10 @@
 No Qt, no display, no controlling terminal required. Runs under Windows
 PowerShell, over SSH, or from a systemd unit on the Pi.
 
-The signal line is asserted while occupancy is MULTIPLE, meaning more than one
-resolvably distinct object is confirmed in front of the sensor. It is
-de-asserted on every exit path, including radar silence, so the line never
-outlives the evidence for it.
+The signal line follows confirmed presence. Multiple resolvably distinct
+objects may confirm immediately while one object must persist for the configured
+number of frames. The line is de-asserted on every exit path, including radar
+silence, so it never outlives the evidence for it.
 """
 
 from __future__ import annotations
@@ -174,22 +174,21 @@ class HeadlessMonitor:
                 f"velocity={target.radial_velocity_mps:+.2f}m/s "
                 f"snr={target.peak_snr_db:.1f}dB points={target.point_count}"
             )
-            self._write(f"DETECTED frame={report.frame_number} {details}")
+            self._write(f"DETECTED frame={report.frame_number} {details} signal=HIGH")
             return
-        self._write(f"CLEARED frame={report.frame_number}")
+        self._write(f"CLEARED frame={report.frame_number} signal=LOW")
 
     def _print_occupancy(self, report: DetectionReport) -> None:
         if report.occupancy is OccupancyState.MULTIPLE:
             ranges: str = ",".join(f"{t.range_m:.2f}m" for t in report.distinct_targets)
             self._write(
                 f"MULTI frame={report.frame_number} objects={report.distinct_count} "
-                f"ranges={ranges} signal=HIGH"
+                f"ranges={ranges}"
             )
             return
         if self._last_occupancy is OccupancyState.MULTIPLE:
             self._write(
-                f"MULTI-CLEARED frame={report.frame_number} "
-                f"objects={report.distinct_count} signal=LOW"
+                f"MULTI-CLEARED frame={report.frame_number} objects={report.distinct_count}"
             )
 
     def _print_status(self, report: DetectionReport) -> None:
@@ -270,7 +269,7 @@ class HeadlessRunner:
     def _handle(self, frame: RadarFrame) -> None:
         self._check_temperature(frame)
         report: DetectionReport = self._pipeline.process(frame)
-        self._sink.set_state(report.multi_target)
+        self._sink.set_state(report.state is PresenceState.PRESENT)
         self._monitor.update(report)
         self._update_diagnostics(frame, report)
 

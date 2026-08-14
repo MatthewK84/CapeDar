@@ -6,7 +6,7 @@ import pytest
 
 from aop_presence.clustering import cluster_points
 from aop_presence.config import ConfigValidationError, DetectionConfig
-from aop_presence.custom_types import DetectedPoint, PresenceState
+from aop_presence.custom_types import DetectedPoint, OccupancyState, PresenceState
 from aop_presence.filters import gate_points, is_valid_point
 from aop_presence.pipeline import DetectionPipeline
 from aop_presence.presence import PresenceTracker
@@ -89,6 +89,10 @@ class TestPresenceTracker:
         for _ in range(3):
             tracker.update(True)
         assert tracker.is_present
+
+    def test_stronger_evidence_confirms_immediately(self) -> None:
+        tracker = PresenceTracker(3, 6)
+        assert tracker.update(True, confirm_immediately=True) is PresenceState.PRESENT
 
     def test_single_miss_does_not_clear(self) -> None:
         tracker = PresenceTracker(3, 2)
@@ -182,6 +186,14 @@ class TestPipeline:
         assert report.targets == ()
         assert len(report.gated_points) == 6
 
+    def test_two_distinct_targets_confirm_immediately_when_configured(self) -> None:
+        config = DetectionConfig(multi_frames_to_confirm=1)
+        pipeline = DetectionPipeline(config)
+        report = pipeline.process(make_frame(0, blob(5, 2.0) + blob(5, 5.0)))
+        assert report.state is PresenceState.PRESENT
+        assert report.distinct_count == 2
+        assert report.occupancy is OccupancyState.MULTIPLE
+
     def test_target_leaving_eventually_clears(self) -> None:
         pipeline = DetectionPipeline(CONFIG)
         for number in range(5):
@@ -204,7 +216,7 @@ class TestConfigValidation:
     def test_defaults_are_tuned_for_outdoor_motion(self) -> None:
         config = DetectionConfig()
         assert config.min_range_m == pytest.approx(0.25)
-        assert config.max_range_m == pytest.approx(4.0)
+        assert config.max_range_m == pytest.approx(8.0)
 
     def test_rejects_inverted_range_window(self) -> None:
         with pytest.raises(ConfigValidationError):
