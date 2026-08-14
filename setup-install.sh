@@ -20,7 +20,8 @@ VENV_DIR="${PROJECT_DIR}/.venv"
 CLI_PORT="/dev/ttyUSB0"
 DATA_PORT="/dev/ttyUSB1"
 
-RADAR_CFG="${PROJECT_DIR}/configs/airborne.cfg"
+# Use the shipped field service config and Pi-optimised gate file
+RADAR_CFG="${PROJECT_DIR}/configs/recommended_1.cfg"
 DETECTION_CFG="${PROJECT_DIR}/configs/detection_gates_pi.json"
 
 # Installed console command inside the venv
@@ -100,7 +101,9 @@ sudo -u "$APP_USER" \
 # aop-presence is defined as a console script.
 #
 sudo -u "$APP_USER" \
-    "${VENV_DIR}/bin/pip" install -e "$PROJECT_DIR"
+    # Install the project plus Raspberry Pi GPIO backend extras declared in
+    # pyproject.toml (gpiozero + lgpio). Quoted to avoid shell globbing.
+    "${VENV_DIR}/bin/pip" install -e "${PROJECT_DIR}[pi]"
 
 # Verify executable exists
 
@@ -119,6 +122,7 @@ fi
 echo "[5/7] Configuring serial-port permissions..."
 
 usermod -aG dialout "$APP_USER"
+usermod -aG gpio "$APP_USER" || true
 
 # ------------------------------------------------------------
 # 6. Create systemd service
@@ -145,7 +149,9 @@ ExecStart=${EXECUTABLE} \\
     --cli-port ${CLI_PORT} \\
     --data-port ${DATA_PORT} \\
     --radar-cfg ${RADAR_CFG} \\
-    --detection-cfg ${DETECTION_CFG}
+    --detection-cfg ${DETECTION_CFG} \\
+    --configure always \\
+    --gpio on
 
 Environment=PYTHONUNBUFFERED=1
 
