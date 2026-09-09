@@ -387,7 +387,7 @@ Every gate is live-adjustable in the GUI's **Detection gates** panel. Once you f
 ```
 
 ```bash
-aop-presence --detection-cfg my_gates.json
+capedar --detection-cfg my_gates.json
 ```
 
 Start here when tuning:
@@ -493,7 +493,7 @@ CI runs all three on 3.10 through 3.12. The code targets the strict standards in
 ### Quick Example
 
 ```bash
-aop-presence --cli-port /dev/ttyUSB0 --data-port /dev/ttyUSB1 --radar-cfg recommended_1.cfg --detection-cfg detection_gates.json --gpio
+capedar --cli-port /dev/ttyUSB0 --data-port /dev/ttyUSB1 --radar-cfg recommended_1.cfg --detection-cfg detection_gates.json --gpio
 ```
 
 ## License
