@@ -493,7 +493,7 @@ CI runs all three on 3.10 through 3.12. The code targets the strict standards in
 ### Quick Example
 
 ```bash
-capedar --cli-port /dev/ttyUSB0 --data-port /dev/ttyUSB1 --radar-cfg recommended_1.cfg --detection-cfg detection_gates.json --gpio
+capedar --cli-port /dev/ttyUSB0 --data-port /dev/ttyUSB1 --radar-cfg defaults.cfg --detection-cfg detection_gates_pi.json --gpio
 ```
 
 ## License
